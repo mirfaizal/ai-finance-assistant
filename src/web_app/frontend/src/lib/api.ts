@@ -74,3 +74,32 @@ export async function checkHealth(): Promise<boolean> {
     return false;
   }
 }
+
+// ── Portfolio endpoints ───────────────────────────────────────────────────────
+
+export interface BackendHolding {
+  ticker: string;
+  shares: number;
+  avg_cost: number;
+  updated_at: string;
+}
+
+export interface PortfolioHoldingsResponse {
+  session_id: string;
+  holdings: BackendHolding[];
+  count: number;
+}
+
+/**
+ * Fetch the current paper-portfolio holdings for a backend session.
+ * Called after every trading_agent response to sync SQLite → localStorage.
+ */
+export async function getPortfolioHoldings(
+  sessionId: string,
+): Promise<PortfolioHoldingsResponse> {
+  const res = await fetch(
+    `${BASE_URL}/portfolio/holdings/${encodeURIComponent(sessionId)}`,
+  );
+  if (!res.ok) throw new Error(`Backend error ${res.status}`);
+  return res.json() as Promise<PortfolioHoldingsResponse>;
+}

@@ -137,6 +137,7 @@ export function backendAgentToType(backendName: string): AgentType {
     goal_planning_agent:      'planner',
     news_synthesizer_agent:   'news',
     stock_agent:              'stock',
+    trading_agent:            'portfolio',
   };
   return map[backendName] ?? 'advisor';
 }

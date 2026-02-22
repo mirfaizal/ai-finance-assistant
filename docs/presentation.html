@@ -343,15 +343,17 @@
         <span class="logo-badge">🔗 LangGraph</span>
         <span class="logo-badge">⚡ FastAPI</span>
         <span class="logo-badge">⚛️ React + TypeScript</span>
+        <span class="logo-badge">📈 yfinance</span>
+        <span class="logo-badge">🗄️ SQLite Memory</span>
         <span class="logo-badge">🌲 Pinecone RAG</span>
         <span class="logo-badge">🔍 Tavily Search</span>
         <span class="logo-badge">🔭 LangSmith</span>
       </div>
 
       <div style="margin-top:36px" class="stat-row" style="justify-content:center">
-        <div class="stat"><div class="big-num">6</div><div class="big-label">Specialized Agents</div></div>
-        <div class="stat" style="margin:0 32px"><div class="big-num" style="color:var(--accent2)">3</div><div class="big-label">AI Integrations</div></div>
-        <div class="stat"><div class="big-num" style="color:var(--gold)">∞</div><div class="big-label">Real-Time Data</div></div>
+        <div class="stat"><div class="big-num">7</div><div class="big-label">Specialized Agents</div></div>
+        <div class="stat" style="margin:0 32px"><div class="big-num" style="color:var(--accent2)">9</div><div class="big-label">REST Endpoints</div></div>
+        <div class="stat"><div class="big-num" style="color:var(--gold)">∞</div><div class="big-label">Live yfinance Data</div></div>
       </div>
     </div>
 
@@ -409,11 +411,13 @@
         <div class="arch">
           <div class="arch-box top">🖥️ React / TypeScript Frontend</div>
           <div class="arch-vline"></div>
-          <div class="arch-box top">⚡ FastAPI  server.py</div>
+          <div class="arch-box top">⚡ FastAPI  server.py  (9 endpoints)</div>
           <div class="arch-vline"></div>
-          <div class="arch-box mid">🔗 LangGraph Orchestrator<br><small style="opacity:.7">router → execute_agent → finalize</small></div>
+          <div class="arch-box mid">🗄️ ConversationStore (SQLite WAL) + 🧠 Memory Synthesizer</div>
           <div class="arch-vline"></div>
-          <div class="arch-box route">🧭 Keyword Router (router.py)</div>
+          <div class="arch-box mid">🔗 LangGraph Orchestrator + MemorySaver(thread_id)</div>
+          <div class="arch-vline"></div>
+          <div class="arch-box route">🤖 LLM Router (GPT-4.1-mini) + keyword fallback</div>
           <div class="arch-vline"></div>
           <div class="arch-row">
             <div class="arch-box ag">💰 Finance<br>Q&amp;A</div>
@@ -427,12 +431,16 @@
             <div class="arch-box ag">📰 News</div>
             <div class="arch-hline"></div>
             <div class="arch-box ag">📋 Tax</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag" style="border-color:var(--warn);color:var(--warn)">🔬 Stock<br>ReAct</div>
           </div>
           <div class="arch-vline"></div>
           <div class="arch-row">
-            <div class="arch-box ext">🔍 Tavily Search</div>
+            <div class="arch-box ext">📈 yfinance</div>
             <div class="arch-hline"></div>
             <div class="arch-box ext">🌲 Pinecone RAG</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ext">🔍 Tavily</div>
             <div class="arch-hline"></div>
             <div class="arch-box ext">🔭 LangSmith</div>
           </div>
@@ -441,19 +449,19 @@
 
       <div class="col">
         <div class="card accent-left">
-          <h3>LangGraph StateGraph</h3>
-          <p>Workflow nodes: <code>route_query</code> → <code>execute_agent</code> → <code>finalize</code>. State flows immutably through typed <code>WorkflowState</code>.</p>
+          <h3>LangGraph StateGraph + MemorySaver</h3>
+          <p><code>MemorySaver(thread_id=session_id)</code> persists in-session state. <code>WorkflowState</code> carries <code>conversation_history</code> and <code>memory_summary</code> into every agent call.</p>
         </div>
         <div class="card green-left">
-          <h3 style="color:var(--accent2)">Enriched Request Flow</h3>
+          <h3 style="color:var(--accent2)">Multi-Turn Request Flow</h3>
           <div class="flow">
             <div class="flow-box hl">POST /ask</div>
             <span class="arrow">→</span>
-            <div class="flow-box">Validate</div>
+            <div class="flow-box">SQLite</div>
             <span class="arrow">→</span>
-            <div class="flow-box hl4">Route</div>
+            <div class="flow-box hl4">LLM Route</div>
             <span class="arrow">→</span>
-            <div class="flow-box hl2">Agent</div>
+            <div class="flow-box hl2">ReAct</div>
             <span class="arrow">→</span>
             <div class="flow-box hl3">GPT-4.1</div>
             <span class="arrow">→</span>
@@ -461,21 +469,21 @@
           </div>
         </div>
         <div class="card purple-left">
-          <h3 style="color:var(--purple)">Per-Agent Context Injection</h3>
-          <p>Each agent independently decides: <span class="highlight">① Tavily?</span> (real-time query) → <span class="green">② Pinecone RAG?</span> (conceptual query) → builds enriched system prompt before calling GPT-4.1.</p>
+          <h3 style="color:var(--purple)">Conversation Memory</h3>
+          <p>Turn 1: "What is the wash sale rule?" → saved to SQLite.<br>Turn 2: "Does it apply to ETFs?" → history injected → GPT references prior answer without repeating.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
-  <!-- SLIDE 4 – THE 6 AGENTS                                             -->
+  <!-- SLIDE 4 – THE 7 AGENTS                                             -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <section class="slide">
     <div class="slide-header">
       <span class="slide-num">04</span>
       <div class="slide-title-line"></div>
-      <h2 style="margin:0">6 Specialized Agents</h2>
+      <h2 style="margin:0">7 Specialized Agents</h2>
     </div>
 
     <div class="two-col">
@@ -485,49 +493,65 @@
           <div class="info">
             <strong>Finance Q&amp;A Agent</strong>
             <p>Answers general financial education questions — concepts, definitions, current events.</p>
-            <span class="keywords">keywords: inflation, interest rate, GDP, bond, ETF, Fed…</span>
+            <span class="keywords">Tavily + Pinecone RAG &nbsp;|&nbsp; keywords: inflation, ETF, Fed, bond…</span>
           </div>
         </div>
         <div class="agent-pill">
           <span class="emoji">📊</span>
           <div class="info">
             <strong>Portfolio Analysis Agent</strong>
-            <p>Analyses asset allocation, diversification, risk/return, rebalancing strategies.</p>
-            <span class="keywords">keywords: portfolio, rebalance, allocation, holdings, diversify…</span>
+            <p>Analyses asset allocation, diversification, rebalancing. ReAct loop calls <code>analyze_portfolio</code> tool.</p>
+            <span class="keywords">PORTFOLIO_TOOLS ReAct + Pinecone &nbsp;|&nbsp; portfolio, holdings, rebalance…</span>
           </div>
         </div>
         <div class="agent-pill">
           <span class="emoji">📈</span>
           <div class="info">
             <strong>Market Analysis Agent</strong>
-            <p>Covers stock trends, sector movements, technical &amp; fundamental analysis education.</p>
-            <span class="keywords">keywords: market, stock, bull run, bear market, sector, S&P…</span>
+            <p>Covers stock trends, sector movements. Calls <code>get_market_overview</code> + <code>get_sector_performance</code>.</p>
+            <span class="keywords">MARKET_TOOLS ReAct + Tavily &nbsp;|&nbsp; market, sector, S&P, today…</span>
           </div>
         </div>
-      </div>
-      <div>
         <div class="agent-pill">
           <span class="emoji">🎯</span>
           <div class="info">
             <strong>Goal Planning Agent</strong>
             <p>Helps users think through financial goals — retirement, education savings, home purchase.</p>
-            <span class="keywords">keywords: retire, goal, savings plan, FIRE, 401k, college fund…</span>
+            <span class="keywords">Pinecone RAG &nbsp;|&nbsp; retire, goal, FIRE, 401k, save…</span>
           </div>
         </div>
+      </div>
+      <div>
         <div class="agent-pill">
           <span class="emoji">📰</span>
           <div class="info">
             <strong>News Synthesizer Agent</strong>
             <p>Aggregates &amp; summarises financial news, earnings reports, macro updates in real time.</p>
-            <span class="keywords">keywords: news, earnings, quarterly, report, announcement…</span>
+            <span class="keywords">Tavily auto-fetch &nbsp;|&nbsp; news, earnings, report, announcement…</span>
           </div>
         </div>
         <div class="agent-pill">
           <span class="emoji">📋</span>
           <div class="info">
             <strong>Tax Education Agent</strong>
-            <p>Provides general tax education — capital gains, deductions, IRS rules, tax-loss harvesting.</p>
-            <span class="keywords">keywords: tax, capital gains, IRS, deduction, write-off, 1099…</span>
+            <p>Provides general tax education. ReAct loop calls <code>calculate_capital_gains</code> + <code>find_tax_loss_opportunities</code>.</p>
+            <span class="keywords">TAX_TOOLS ReAct + Pinecone &nbsp;|&nbsp; tax, capital gains, IRS, 1099…</span>
+          </div>
+        </div>
+        <div class="agent-pill" style="border-color:rgba(249,115,22,.3)">
+          <span class="emoji">🔬</span>
+          <div class="info">
+            <strong>Stock Analyst Agent <span style="color:var(--warn);font-size:.75rem">NEW</span></strong>
+            <p><code>create_react_agent</code> — calls <code>get_stock_quote</code> → <code>get_stock_financials</code> iteratively. True multi-step tool loop.</p>
+            <span class="keywords">STOCK_TOOLS ReAct &nbsp;|&nbsp; price, P/E, AAPL, ticker symbols, compare…</span>
+          </div>
+        </div>
+        <div class="agent-pill" style="border-color:rgba(188,140,255,.3)">
+          <span class="emoji">🧠</span>
+          <div class="info">
+            <strong>Memory Synthesizer <span style="color:var(--purple);font-size:.75rem">NEW</span></strong>
+            <p>GPT-4.1-mini compresses conversation history (&gt;5 turns) into a concise paragraph injected into every subsequent prompt.</p>
+            <span class="keywords">Triggered by orchestrator when turn_count ≥ 5</span>
           </div>
         </div>
       </div>
@@ -541,29 +565,35 @@
     <div class="slide-header">
       <span class="slide-num">05</span>
       <div class="slide-title-line"></div>
-      <h2 style="margin:0">Intelligent Routing</h2>
+      <h2 style="margin:0">LLM-Based Intelligent Routing</h2>
     </div>
 
     <div class="two-col" style="flex:1">
       <div class="col">
         <div class="card accent-left">
-          <h3>Keyword Scoring Algorithm</h3>
-          <p>Each agent declares a list of domain keywords. The router scores the query against every agent's keywords and dispatches to the <span class="highlight">highest scorer</span>. Ties default to the Finance Q&amp;A agent.</p>
+          <h3>GPT-4.1-mini Router</h3>
+          <p>Every query is classified by a lightweight LLM call that returns structured JSON: <code>{"agent": "...", "confidence": 0.0–1.0}</code>. History from the last 2 turns is included so follow-up questions route correctly.</p>
         </div>
 
-        <pre><code><span class="cm"># router.py (simplified)</span>
-<span class="kw">def</span> <span class="fn">route_query</span>(self, question: str) <span class="kw">-></span> str:
-    scores = {}
-    <span class="kw">for</span> name, agent <span class="kw">in</span> self.agent_registry.items():
-        score = agent.<span class="fn">can_handle</span>(question)
-        scores[name] = score
+        <pre><code><span class="cm"># router.py — LLM routing</span>
+<span class="kw">def</span> <span class="fn">route_query_llm</span>(question: str, history: list) → str:
+    response = llm.<span class="fn">invoke</span>([
+        SystemMessage(ROUTER_SYSTEM_PROMPT),
+        HumanMessage(<span class="fn">f</span><span class="str">"{format_history(history)}\nNew: {question}"</span>),
+    ])
+    data = json.<span class="fn">loads</span>(response.content)
+    <span class="kw">return</span> data[<span class="str">"agent"</span>]  <span class="cm"># e.g. "stock_agent"</span>
 
-    best = <span class="fn">max</span>(scores, key=scores.<span class="fn">get</span>)
-    <span class="kw">return</span> best  <span class="cm"># e.g. "tax_education_agent"</span></code></pre>
+<span class="cm"># Keyword fallback if LLM call fails</span>
+<span class="kw">def</span> <span class="fn">route_query</span>(question, use_llm=<span class="kw">True</span>):
+    <span class="kw">if</span> use_llm:
+        <span class="kw">try</span>:  <span class="kw">return</span> <span class="fn">route_query_llm</span>(question, history)
+        <span class="kw">except</span>:  <span class="kw">pass</span>  <span class="cm"># fall through</span>
+    <span class="kw">return</span> <span class="fn">_route_by_keywords</span>(question)  <span class="cm"># existing scoring</span></code></pre>
 
         <div class="card green-left">
-          <h3 style="color:var(--accent2)">Extensible Design</h3>
-          <p>New agents are registered automatically. Subclass <code>BaseAgent</code>, implement <code>can_handle()</code> and <code>process()</code> — the router picks them up with zero config changes.</p>
+          <h3 style="color:var(--accent2)">Context-Aware Routing</h3>
+          <p>"Does it apply to ETFs?" after asking about wash sale rules → LLM sees history → routes to <code>tax_education_agent</code> even though "ETF" alone would score Finance Q&amp;A.</p>
         </div>
       </div>
 
@@ -573,29 +603,29 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:2px">
           <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
-            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"What are capital gains taxes on ETFs?"</em></span>
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"What is NVDA trading at? Compare with AMD."</em></span>
             <span class="arrow">→</span>
-            <div class="flow-box" style="border-color:var(--warn);color:var(--warn)">📋 Tax Agent</div>
+            <div class="flow-box" style="border-color:var(--warn);color:var(--warn)">🔬 Stock Agent</div>
           </div>
           <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
             <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"How should I rebalance my 60/40 portfolio?"</em></span>
             <span class="arrow">→</span>
-            <div class="flow-box" style="border-color:var(--accent2);color:var(--accent2)">📊 Portfolio Agent</div>
+            <div class="flow-box" style="border-color:var(--accent2);color:var(--accent2)">📊 Portfolio</div>
           </div>
           <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
-            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Latest NVIDIA earnings report summary?"</em></span>
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Latest NVIDIA earnings summary?"</em></span>
             <span class="arrow">→</span>
-            <div class="flow-box" style="border-color:var(--pink);color:var(--pink)">📰 News Agent</div>
+            <div class="flow-box" style="border-color:var(--pink);color:var(--pink)">📰 News</div>
+          </div>
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Does it apply to ETFs?" (after wash sale)</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--warn);color:var(--warn)">📋 Tax (history context)</div>
           </div>
           <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
             <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"I want to retire at 55. Where do I start?"</em></span>
             <span class="arrow">→</span>
-            <div class="flow-box" style="border-color:var(--gold);color:var(--gold)">🎯 Goal Agent</div>
-          </div>
-          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
-            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Is the S&P 500 in a bull run right now?"</em></span>
-            <span class="arrow">→</span>
-            <div class="flow-box" style="border-color:var(--teal);color:var(--teal)">📈 Market Agent</div>
+            <div class="flow-box" style="border-color:var(--gold);color:var(--gold)">🎯 Goals</div>
           </div>
         </div>
       </div>
@@ -656,47 +686,47 @@ system_prompt = BASE_PROMPT + web_context + rag_context + <span class="fn">f</sp
     <div class="two-col" style="flex:1">
       <div class="col">
         <div class="card accent-left">
-          <h3>Interactive Dashboard</h3>
-          <p>Portfolio performance chart, market overview, and a real-time chat interface — all in one responsive single-page application built with <span class="highlight">Vite + React 18</span>.</p>
+          <h3>Live Data Dashboard</h3>
+          <p>Every chart and data panel fetches live yfinance data — <span class="highlight">no mock data</span>. 5-minute in-memory cache prevents over-fetching. Skeleton loaders shown while data arrives.</p>
         </div>
         <div class="card gold-left">
           <h3 style="color:var(--gold)">Key Components</h3>
           <ul class="bullets" style="font-size:.88rem">
-            <li><code>ChatInterface.tsx</code> — streaming chat with agent identification</li>
-            <li><code>Dashboard.tsx</code> — main layout with sidebar panels</li>
-            <li><code>PortfolioChart.tsx</code> — interactive portfolio visualisation</li>
-            <li><code>MarketChart.tsx</code> — live market data chart</li>
-            <li><code>AgentBadge.tsx</code> — shows which agent answered</li>
-            <li><code>RiskModal.tsx</code> — risk profile configuration</li>
+            <li><code>Dashboard.tsx</code> — fetches <code>GET /market/overview</code> for live SPY/QQQ/VIX cards</li>
+            <li><code>MarketChart.tsx</code> — fetches <code>GET /market/chart</code> — 12-month live line chart</li>
+            <li><code>PortfolioChart.tsx</code> — POSTs <code>/portfolio/analyze</code> with holdings → live pie + P&L</li>
+            <li><code>PortfolioInput.tsx</code> — add/remove holdings (ticker, shares, cost)</li>
+            <li><code>RightSidebar.tsx</code> — fetches <code>GET /market/quotes</code> — live ticker strip</li>
+            <li><code>ChatInterface.tsx</code> — session-aware: sends <code>session_id</code>, persists in localStorage</li>
           </ul>
         </div>
         <div class="card green-left">
-          <h3 style="color:var(--accent2)">Type-Safe API Layer</h3>
-          <p><code>src/lib/api.ts</code> provides a typed client for all backend calls. <code>agentEngine.ts</code> abstracts agent routing logic for the frontend layer.</p>
+          <h3 style="color:var(--accent2)">Session-Aware Chat</h3>
+          <p><code>finnie_backend_session_map</code> in localStorage links frontend UUID to backend SQLite session. Follow-up questions automatically continue the same conversation thread.</p>
         </div>
       </div>
       <div class="col" style="justify-content:center;align-items:center">
-        <!-- Mockup of the UI -->
+        <!-- Mockup of the live data UI -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;width:100%;max-width:380px">
           <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.78rem;color:var(--text-dim)">
-            <div style="color:var(--accent);font-weight:600;margin-bottom:4px">📊 Portfolio Overview</div>
+            <div style="color:var(--accent);font-weight:600;margin-bottom:4px">📈 Live Market Overview</div>
             <div style="display:flex;gap:16px">
-              <span>Total Value <span class="green">+2.4%</span></span>
-              <span>Day P&L <span class="green">+$142</span></span>
+              <span>SPY <span class="green">$689.43 +0.68%</span></span>
+              <span>VIX <span style="color:var(--accent2)">14.2 Calm</span></span>
             </div>
             <div style="margin-top:8px;background:linear-gradient(to right,var(--accent2),var(--teal));height:4px;border-radius:2px;width:70%"></div>
           </div>
           <div style="font-size:.78rem;color:var(--text-dim);margin-bottom:8px">
             <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:6px">
-              <span style="color:var(--text-dim)">You:</span> <em>What is dollar cost averaging?</em>
+              <span style="color:var(--text-dim)">You:</span> <em>What is NVDA trading at?</em>
             </div>
-            <div style="background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:10px 14px">
-              <div style="color:var(--accent);font-size:.7rem;margin-bottom:4px">💰 Finance Q&amp;A Agent</div>
-              Dollar cost averaging (DCA) is an investment strategy where you invest a fixed amount at regular intervals regardless of price, reducing the impact of volatility…
+            <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:8px;padding:10px 14px">
+              <div style="color:var(--warn);font-size:.7rem;margin-bottom:4px">🔬 Stock Analyst Agent</div>
+              NVDA called <code>get_stock_quote</code> → $875.50, P/E 42.1 → called <code>get_stock_financials</code> → revenue $60B, analyst target $920…
             </div>
           </div>
           <div style="display:flex;gap:8px">
-            <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.75rem;color:var(--text-dim)">Ask a question…</div>
+            <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.75rem;color:var(--text-dim)">Ask a follow-up…</div>
             <div style="background:var(--accent);border-radius:8px;padding:8px 12px;font-size:.75rem;color:white">Send</div>
           </div>
         </div>
@@ -727,33 +757,50 @@ system_prompt = BASE_PROMPT + web_context + rag_context + <span class="fn">f</sp
             <div style="display:flex;gap:10px;align-items:baseline">
               <span style="background:rgba(88,166,255,.15);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">POST</span>
               <code>/ask</code>
-              <span style="color:var(--text-dim);font-size:.8rem">— main chat endpoint</span>
+              <span style="color:var(--text-dim);font-size:.8rem">— {question, session_id?}</span>
             </div>
             <div style="display:flex;gap:10px;align-items:baseline">
               <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
-              <code>/agents</code>
-              <span style="color:var(--text-dim);font-size:.8rem">— registered agent list</span>
+              <code>/history/{session_id}</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— conversation turns</span>
             </div>
             <div style="display:flex;gap:10px;align-items:baseline">
               <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
-              <code>/docs</code>
-              <span style="color:var(--text-dim);font-size:.8rem">— Swagger UI (auto-generated)</span>
+              <code>/market/overview</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— live SPY/QQQ/VIX/IWM</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
+              <code>/market/chart</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— 12-month monthly data</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
+              <code>/market/quotes?symbols=</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— live ticker prices</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(88,166,255,.15);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">POST</span>
+              <code>/portfolio/analyze</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— live P&L + allocation</span>
             </div>
           </div>
         </div>
         <div class="card gold-left">
           <h3 style="color:var(--gold)">Request / Response</h3>
-          <pre style="font-size:.76rem"><code><span class="cm">## Request</span>
+          <pre style="font-size:.76rem"><code><span class="cm">## Request (session continues)</span>
 POST /ask
 {
-  <span class="str">"question"</span>: <span class="str">"Who is the current Fed chair?"</span>
+  <span class="str">"question"</span>: <span class="str">"Does it apply to ETFs?"</span>,
+  <span class="str">"session_id"</span>: <span class="str">"abc-123"</span>
 }
 
 <span class="cm">## Response</span>
 {
-  <span class="str">"question"</span>: <span class="str">"Who is the current Fed chair?"</span>,
-  <span class="str">"answer"</span>:   <span class="str">"Jerome Powell is the Chair..."</span>,
-  <span class="str">"agent"</span>:    <span class="str">"finance_qa_agent"</span>
+  <span class="str">"question"</span>: <span class="str">"Does it apply to ETFs?"</span>,
+  <span class="str">"answer"</span>:   <span class="str">"Yes, the wash sale rule..."</span>,
+  <span class="str">"agent"</span>:    <span class="str">"tax_education_agent"</span>,
+  <span class="str">"session_id"</span>: <span class="str">"abc-123"</span>
 }</code></pre>
         </div>
       </div>
@@ -797,42 +844,47 @@ POST /ask
     <div class="two-col" style="flex:1">
       <div class="col">
         <div class="card accent-left">
-          <h3>StateGraph Workflow</h3>
-          <p>Uses LangGraph's <code>StateGraph</code> — a directed acyclic graph of nodes and conditional edges. State flows immutably and each node can read/write a typed <code>WorkflowState</code>.</p>
+          <h3>StateGraph + MemorySaver in Production</h3>
+          <p>The StateGraph is now the <em>actual HTTP path</em> — every <code>POST /ask</code> goes through it. <code>MemorySaver</code> checkpointer automatically replays the conversation state per <code>thread_id</code>.</p>
           <pre style="margin-top:10px;font-size:.76rem"><code><span class="cm"># orchestrator.py</span>
-graph = <span class="fn">StateGraph</span>(WorkflowState)
-graph.<span class="fn">add_node</span>(<span class="str">"router"</span>,        route_node)
-graph.<span class="fn">add_node</span>(<span class="str">"execute_agent"</span>, execute_node)
-graph.<span class="fn">add_node</span>(<span class="str">"finalize"</span>,      finalize_node)
-graph.<span class="fn">add_edge</span>(<span class="str">"router"</span>, <span class="str">"execute_agent"</span>)
-graph.<span class="fn">add_edge</span>(<span class="str">"execute_agent"</span>, <span class="str">"finalize"</span>)
-graph.<span class="fn">add_edge</span>(<span class="str">"finalize"</span>, END)</code></pre>
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+checkpointer = <span class="fn">MemorySaver</span>()
+self.app = graph.<span class="fn">compile</span>(checkpointer=checkpointer)
+
+<span class="cm"># Every invoke carries the session thread</span>
+result = self.app.<span class="fn">invoke</span>(
+    {<span class="str">"question"</span>: q, <span class="str">"conversation_history"</span>: hist},
+    config={<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: session_id}}
+)</code></pre>
         </div>
         <div class="card purple-left">
-          <h3 style="color:var(--purple)">WorkflowState</h3>
+          <h3 style="color:var(--purple)">Updated WorkflowState</h3>
           <pre style="font-size:.76rem"><code><span class="kw">class</span> <span class="fn">WorkflowState</span>(TypedDict):
-    question:      str
-    routed_agent:  Optional[str]
-    agent_output:  Optional[AgentOutput]
-    messages:      List[AgentMessage]
-    status:        AgentStatus
-    metadata:      Dict[str, Any]</code></pre>
+    question:             str
+    routed_agent:         Optional[str]
+    agent_output:         Optional[AgentOutput]
+    messages:             List[AgentMessage]
+    status:               AgentStatus
+    metadata:             Dict[str, Any]
+    conversation_history: List[Dict]  <span class="cm"># NEW</span>
+    memory_summary:       Optional[str]  <span class="cm"># NEW</span></code></pre>
         </div>
       </div>
       <div class="col">
         <div class="card green-left">
-          <h3 style="color:var(--accent2)">Why LangGraph?</h3>
+          <h3 style="color:var(--accent2)">Why LangGraph + MemorySaver?</h3>
           <ul class="bullets">
-            <li>Declarative graph definition — easy to add new nodes or edges</li>
-            <li>Built-in state management — no manual state passing</li>
-            <li>Conditional edges support complex branching workflows</li>
-            <li>Native LangSmith integration for tracing every run</li>
-            <li>Supports streaming outputs and human-in-the-loop pauses</li>
+            <li><code>MemorySaver</code> — in-session turn-by-turn LangGraph state, zero config</li>
+            <li>SQLite <code>ConversationStore</code> — cross-session durable memory</li>
+            <li>They complement: LangGraph for within-run state, SQLite for persistence</li>
+            <li>Native LangSmith integration shows every ReAct tool loop span</li>
+            <li>Conditional edges enable portfolio → market agent handoff</li>
           </ul>
         </div>
         <div class="card gold-left">
-          <h3 style="color:var(--gold)">Multi-Agent Ready</h3>
-          <p>The orchestrator can be extended to support <span class="highlight">parallel agent execution</span>, <span class="green">agent collaboration</span>, and <span class="purple">iterative refinement loops</span> — just add nodes and conditional edges to the graph.</p>
+          <h3 style="color:var(--gold)">ReAct Tool Loop (Stock Agent Trace)</h3>
+          <p>Visible in LangSmith as nested child spans: <span class="highlight">tool_call: get_stock_quote</span> → <span class="green">tool_result: {price, pe}</span> → <span class="highlight">tool_call: get_stock_financials</span> → <span class="green">tool_result: {revenue, eps}</span> → <span class="purple">final_answer</span>. True multi-step autonomous agent behaviour.</p>
         </div>
       </div>
     </div>
@@ -866,8 +918,18 @@ graph.<span class="fn">add_edge</span>(<span class="str">"finalize"</span>, END)
       </div>
       <div class="stack-item">
         <div class="logo">⚛️</div>
-        <div class="name">React 18</div>
+        <div class="name">React 19</div>
         <div class="role">Frontend UI</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">📈</div>
+        <div class="name">yfinance</div>
+        <div class="role">Live Financial Data</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🗄️</div>
+        <div class="name">SQLite WAL</div>
+        <div class="role">Conversation Memory</div>
       </div>
       <div class="stack-item">
         <div class="logo">🌲</div>
@@ -1011,12 +1073,17 @@ open http://localhost:8000/docs</code></pre>
     <div class="card purple-left">
       <h3 style="color:var(--purple)">Demo Queries to Try</h3>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;font-size:.82rem">
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">📋</span> "What taxes do I owe on selling stocks held &lt;1 year?"</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--teal)">📈</span> "Is the tech sector outperforming the S&amp;P 500 this month?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">�</span> "Is NVDA overvalued compared to AMD right now?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">📋</span> "What is the wash sale rule?" then "Does it apply to ETFs?" <em>(multi-turn)</em></div>
         <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--gold)">🎯</span> "How much should I save monthly to retire at 55 with $2M?"</div>
         <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--pink)">📰</span> "Summarise the latest Fed interest rate decision."</div>
         <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--accent2)">📊</span> "My portfolio is 80% tech stocks. Is that risky?"</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--accent)">💰</span> "Explain the difference between ETFs and mutual funds."</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--teal)">📈</span> "Is the tech sector outperforming the S&amp;P 500 this month?"</div>
+      </div>
+      <div style="margin-top:14px;background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.76rem">
+        <span style="color:var(--gold)">Multi-turn curl:</span>
+        <code style="color:var(--text-dim)"> curl -X POST /ask -d '{"question":"Does it apply to ETFs?","session_id":"abc-123"}'</code>
+        — backend loads SQLite history, LLM router sees context, dispatches to tax agent.
       </div>
     </div>
   </section>
@@ -1034,43 +1101,43 @@ open http://localhost:8000/docs</code></pre>
     <div class="grid-3">
       <div class="card accent-left">
         <span class="icon">🧭</span>
-        <h3>Intelligent Routing</h3>
-        <p>Zero-config keyword scoring dispatches every query to the right domain expert automatically.</p>
+        <h3>LLM-Based Routing</h3>
+        <p>GPT-4.1-mini classifies every query with context history. Keyword fallback ensures 100% uptime.</p>
       </div>
       <div class="card green-left">
-        <span class="icon">⚡</span>
-        <h3 style="color:var(--accent2)">Real-Time Data</h3>
-        <p>Tavily live web search grounds answers in the latest market data, news, and events.</p>
+        <span class="icon">📈</span>
+        <h3 style="color:var(--accent2)">Live yfinance Data</h3>
+        <p>All price, chart, quote, and portfolio endpoints pull real-time yfinance data — no mock, no API key.</p>
+      </div>
+      <div class="card warn-left">
+        <span class="icon">🔬</span>
+        <h3 style="color:var(--warn)">ReAct Tool Loop</h3>
+        <p>Stock Analyst agent uses <code>create_react_agent</code> with 5 yfinance tools — iterative Observation → Action.</p>
+      </div>
+      <div class="card purple-left">
+        <span class="icon">🗄️</span>
+        <h3 style="color:var(--purple)">Persistent Memory</h3>
+        <p>SQLite WAL <code>ConversationStore</code> persists every turn. Memory Synthesizer compresses history to keep context tight.</p>
+      </div>
+      <div class="card gold-left">
+        <span class="icon">🔗</span>
+        <h3 style="color:var(--gold)">LangGraph + MemorySaver</h3>
+        <p>StateGraph with <code>MemorySaver</code> checkpointer wired to <code>thread_id=session_id</code> in every HTTP call.</p>
       </div>
       <div class="card teal-left">
         <span class="icon">🌲</span>
         <h3 style="color:var(--teal)">RAG-Augmented</h3>
         <p>Pinecone vector search injects domain-specific document context for conceptual questions.</p>
       </div>
-      <div class="card purple-left">
-        <span class="icon">🔭</span>
-        <h3 style="color:var(--purple)">Full Observability</h3>
-        <p>Every agent call traced in LangSmith — latency, tokens, inputs, outputs, tags, and errors.</p>
-      </div>
-      <div class="card gold-left">
-        <span class="icon">🔗</span>
-        <h3 style="color:var(--gold)">LangGraph Workflow</h3>
-        <p>StateGraph-based orchestration — declarative, extensible, and production-ready.</p>
-      </div>
-      <div class="card warn-left">
-        <span class="icon">🔒</span>
-        <h3 style="color:var(--warn)">Type-Safe Full Stack</h3>
-        <p>Pydantic v2 on the backend + TypeScript on the frontend — end-to-end type safety.</p>
-      </div>
       <div class="card pink-left">
-        <span class="icon">📦</span>
-        <h3 style="color:var(--pink)">Extensible Architecture</h3>
-        <p>Add a new agent by subclassing <code>BaseAgent</code> — router and orchestrator auto-discover it.</p>
+        <span class="icon">💬</span>
+        <h3 style="color:var(--pink)">Session Continuity</h3>
+        <p>Frontend UUID maps to backend session. Follow-up questions continue the same thread across page reloads.</p>
       </div>
       <div class="card accent-left">
-        <span class="icon">🧪</span>
-        <h3>Comprehensive Tests</h3>
-        <p>Dedicated test file per agent + API integration tests + system-level end-to-end tests.</p>
+        <span class="icon">🔭</span>
+        <h3>Full Observability</h3>
+        <p>Every ReAct step and agent call traced in LangSmith — latency, tokens, tool calls, and errors.</p>
       </div>
       <div class="card green-left">
         <span class="icon">⚙️</span>
@@ -1094,13 +1161,13 @@ open http://localhost:8000/docs</code></pre>
       <div class="col">
         <div class="card accent-left">
           <span class="icon">🔄</span>
-          <h3>Parallel Agent Execution</h3>
-          <p>For complex queries, fan out to multiple agents simultaneously and merge results — e.g., a "how should I invest my inheritance?" query triggers both Portfolio and Goal agents in parallel.</p>
+          <h3>Parallel Agent Fan-out</h3>
+          <p>Fan out to multiple agents simultaneously and merge results — e.g., a "how should I invest my inheritance?" query triggers both Portfolio and Goal agents in parallel via LangGraph conditional edges.</p>
         </div>
-        <div class="card gold-left">
-          <span class="icon">💬</span>
-          <h3 style="color:var(--gold)">Multi-Turn Conversation Memory</h3>
-          <p>Persist conversation history in a vector store. Agents can reference earlier context — "as we discussed earlier, your risk tolerance is moderate…"</p>
+        <div class="card green-left">
+          <span class="icon">📡</span>
+          <h3 style="color:var(--accent2)">Streaming Responses</h3>
+          <p>Stream GPT-4.1 tokens and ReAct tool-call events to the frontend in real-time — eliminates latency for long stock analysis runs.</p>
         </div>
         <div class="card purple-left">
           <span class="icon">🔐</span>
@@ -1109,20 +1176,20 @@ open http://localhost:8000/docs</code></pre>
         </div>
       </div>
       <div class="col">
-        <div class="card green-left">
-          <span class="icon">📡</span>
-          <h3 style="color:var(--accent2)">Streaming Responses</h3>
-          <p>Stream GPT-4.1 tokens to the frontend in real-time — eliminates perceived latency and creates a more fluid chat experience.</p>
+        <div class="card gold-left">
+          <span class="icon">🏦</span>
+          <h3 style="color:var(--gold)">Real Brokerage Integration</h3>
+          <p>Connect to Alpaca or Plaid so the Portfolio and Stock agents analyse the user's <em>actual</em> holdings and execute trades rather than hypothetical scenarios.</p>
         </div>
         <div class="card teal-left">
           <span class="icon">🌍</span>
           <h3 style="color:var(--teal)">Expanded RAG Knowledge Base</h3>
-          <p>Ingest SEC filings, Federal Reserve reports, academic research, and regulatory documents into Pinecone to deepen domain knowledge across all agents.</p>
+          <p>Ingest SEC filings, Federal Reserve reports, and regulatory documents into Pinecone to deepen domain knowledge across all agents.</p>
         </div>
         <div class="card pink-left">
-          <span class="icon">📊</span>
-          <h3 style="color:var(--pink)">Real Brokerage Integration</h3>
-          <p>Connect to Alpaca, Plaid, or similar APIs so the Portfolio agent can analyse the user's <em>actual</em> holdings rather than hypothetical scenarios.</p>
+          <span class="icon">🎙️</span>
+          <h3 style="color:var(--pink)">Voice Interface</h3>
+          <p>Add speech-to-text input and text-to-speech playback so users can interact with the assistant hands-free while monitoring markets.</p>
         </div>
       </div>
     </div>
@@ -1158,10 +1225,13 @@ open http://localhost:8000/docs</code></pre>
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:28px">
-        <span class="tag">🧠 6 Specialized AI Agents</span>
+        <span class="tag">🧠 7 Specialized AI Agents</span>
+        <span class="tag">📈 yfinance Live Data</span>
+        <span class="tag">🗄️ SQLite Memory</span>
+        <span class="tag">🔬 ReAct Tool Loop</span>
         <span class="tag">🌿 Pinecone RAG</span>
         <span class="tag">🔍 Tavily Search</span>
-        <span class="tag">🔗 LangGraph</span>
+        <span class="tag">🔗 LangGraph + MemorySaver</span>
         <span class="tag">🔭 Full Observability</span>
         <span class="tag">📊 React Dashboard</span>
       </div>

@@ -27,6 +27,13 @@ export function PortfolioChart() {
     const [loading,  setLoading]  = useState(false);
     const [showEdit, setShowEdit] = useState(false);
 
+    // Re-read localStorage whenever the trading agent saves new holdings
+    useEffect(() => {
+        const onUpdate = () => setHoldings(getHoldings());
+        window.addEventListener('portfolioUpdated', onUpdate);
+        return () => window.removeEventListener('portfolioUpdated', onUpdate);
+    }, []);
+
     const analyse = useCallback(async (hs: Holding[]) => {
         if (hs.length === 0) { setSegments([]); setSummary(null); return; }
         setLoading(true);
@@ -127,7 +134,7 @@ export function PortfolioChart() {
                         </Pie>
                         <Tooltip
                             contentStyle={{ background: '#111827', border: '1px solid #1e2a3a', borderRadius: 8 }}
-                            formatter={(v: number) => [`${v.toFixed(1)}%`, '']}
+                            formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(1)}%`, '']}
                             itemStyle={{ color: '#e5e7eb' }}
                         />
                         <Legend

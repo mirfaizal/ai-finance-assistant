@@ -49,8 +49,9 @@ const AGENT_SUGGESTIONS = [
 import { MessageBubble } from './MessageBubble';
 import { AgentBadge } from './AgentBadge';
 import { detectAgent, getAgent, backendAgentToType } from '../lib/agentEngine';
-import { askQuestion } from '../lib/api';
+import { askQuestion, getPortfolioHoldings } from '../lib/api';
 import { appendMessage, getSession, getBackendSessionId, setBackendSessionId } from '../lib/storage';
+import { saveHoldings } from '../lib/holdingsStore';
 import type { Message, AgentType } from '../lib/types';
 
 interface ChatInterfaceProps {
@@ -127,6 +128,26 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
             // Use the backend's actual agent, not the client-side guess
             const confirmedAgent = backendAgentToType(res.agent);
             setActiveAgent(confirmedAgent);
+
+            // If the trading agent executed a trade, sync SQLite holdings → localStorage
+            // so PortfolioChart updates automatically without a page refresh.
+            if (res.agent === 'trading_agent') {
+                try {
+                    const ph = await getPortfolioHoldings(res.session_id);
+                    if (ph.holdings.length > 0) {
+                        saveHoldings(
+                            ph.holdings.map((h) => ({
+                                ticker:   h.ticker,
+                                shares:   h.shares,
+                                avg_cost: h.avg_cost,
+                            })),
+                        );
+                    }
+                } catch {
+                    // Non-fatal: chart will just not update this turn
+                }
+            }
+
             const aiMsg: Message = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
