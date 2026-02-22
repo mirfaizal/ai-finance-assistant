@@ -1,0 +1,76 @@
+# AI Finance Assistant Configuration
+
+# OpenAI model settings (used by all agents)
+openai:
+  model: gpt-4.1
+  temperature: 0.3
+
+# FastAPI server settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# Legacy LLM block (kept for backward compatibility)
+llm:
+  provider: "openai"
+  model: "gpt-4.1"
+  temperature: 0.3
+  max_tokens: 2000
+
+# ── Tavily Web Search ──────────────────────────────────────────────────────────
+# Real-time web search tool used by agents when the query needs live data.
+# API key is loaded from env: TAVILY_API_KEY
+# Docs: https://docs.tavily.com
+tavily:
+  max_results: 5            # max search results per query
+  search_depth: "basic"     # "basic" (fast) | "advanced" (deeper, more API credits)
+  max_content_chars: 500    # truncate each result's content snippet
+
+# ── Pinecone Vector Store (RAG) ────────────────────────────────────────────────
+# Used for Retrieval-Augmented Generation — injecting relevant document context
+# into agent prompts before the LLM call.
+# API keys are loaded from env: PINECONE_API_KEY, PINECONE_INDEX
+# Docs: https://docs.pinecone.io
+pinecone:
+  index: "ai-finance-rag"             # name of your Pinecone index
+  namespace: "finance-docs"           # logical namespace within the index
+  embedding_model: "text-embedding-ada-002"
+  embedding_dim: 1536
+  top_k: 3                            # number of chunks to retrieve per query
+  score_threshold: 0.75               # minimum similarity score to use a chunk
+
+# ── LangSmith Observability ───────────────────────────────────────────────────
+# Traces all agent and orchestrator calls in the LangSmith UI.
+# Enable by setting these env vars: LANGCHAIN_TRACING_V2=true, LANGCHAIN_API_KEY
+# Docs: https://docs.smith.langchain.com
+langsmith:
+  project: "ai-finance-assistant"     # project name in LangSmith UI
+  # tracing is off by default; set LANGCHAIN_TRACING_V2=true in .env to enable
+
+# Vector Store Configuration (legacy / future)
+vector_store:
+  type: "pinecone"  # Options: pinecone, faiss, chroma
+  embedding_model: "text-embedding-ada-002"
+  chunk_size: 1000
+  chunk_overlap: 200
+
+# Financial Data Sources
+data_sources:
+  alpha_vantage:
+    api_key_env: "ALPHA_VANTAGE_API_KEY"
+    output_size: "compact"
+
+# Agent Configuration
+agents:
+  max_iterations: 10
+  timeout: 300
+
+# Workflow Configuration
+workflow:
+  max_concurrent_tasks: 5
+  retry_attempts: 3
+
+# Streamlit / Web App Configuration
+web_app:
+  port: 8501
+  theme: "light"
