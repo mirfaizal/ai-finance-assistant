@@ -1,4 +1,4 @@
-export type AgentType = 'advisor' | 'analyst' | 'tax_pro' | 'portfolio' | 'planner' | 'news';
+export type AgentType = 'advisor' | 'analyst' | 'tax_pro' | 'portfolio' | 'planner' | 'news' | 'stock';
 
 export interface Agent {
   type: AgentType;

@@ -7,6 +7,7 @@ Provides workflow management with routing, execution, and state management.
 
 from typing import Dict, List, Optional, Any, Callable
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 import logging
 from datetime import datetime
 
@@ -54,6 +55,9 @@ class AgentOrchestrator:
         # Register all agents with the router
         self.router.register_agents(agents)
         
+        # MemorySaver checkpointer for in-session LangGraph state persistence
+        self._checkpointer = MemorySaver()
+
         # Build the LangGraph workflow
         self.workflow = self._build_workflow()
         
@@ -111,8 +115,8 @@ class AgentOrchestrator:
         
         # Finalize always ends
         workflow.add_edge("finalize", END)
-        
-        return workflow.compile()
+
+        return workflow.compile(checkpointer=self._checkpointer)
     
     def _router_node(self, state: WorkflowState) -> WorkflowState:
         """
@@ -364,9 +368,12 @@ class AgentOrchestrator:
             max_iterations=max_iterations
         )
         
-        # Run the workflow
+        # Run the workflow (thread_id enables MemorySaver to replay session state)
         try:
-            final_state = self.workflow.invoke(initial_state)
+            final_state = self.workflow.invoke(
+                initial_state,
+                config={"configurable": {"thread_id": initial_state.session_id}},
+            )
 
             # LangGraph may return either a WorkflowState instance or a dict
             if isinstance(final_state, dict):
@@ -404,29 +411,59 @@ class AgentOrchestrator:
             }
 
 
-# ── Simple functional orchestrator (used by web_app/server.py) ────────────────
+# ── History helper (mirrors finance_agent-main/graph/orchestrator.py) ─────────
 
-def process_query(question: str) -> dict:
+_MEMORY_TRIGGER_TURNS = 5  # synthesize after this many user turns
+
+
+def _format_history(history: list, max_turns: int = 6) -> str:
+    """
+    Format the last *max_turns* conversation pairs as a readable block
+    for LLM prompt injection.  Truncates long assistant answers.
+    """
+    if not history:
+        return ""
+    recent = history[-(max_turns * 2):]
+    lines = ["\n\n### Conversation history (most recent turns):"]
+    for entry in recent:
+        role_label = "User" if entry.get("role") == "user" else "Assistant"
+        content = entry.get("content", "")
+        if entry.get("role") == "assistant" and len(content) > 400:
+            content = content[:400] + "… [truncated]"
+        lines.append(f"{role_label}: {content}")
+    return "\n".join(lines)
+
+
+# ── Functional orchestrator (used by web_app/server.py) ───────────────────────
+
+def process_query(
+    question: str,
+    session_id: Optional[str] = None,
+    history: Optional[List] = None,
+    memory_summary: Optional[str] = None,
+) -> dict:
     """
     Route *question* to the correct agent and return its answer.
 
-    Routing is keyword-based via ``core/router``, with the dispatch table
-    below wiring each agent name to the correct function signature.
-
-    All calls are traced to LangSmith when LANGCHAIN_TRACING_V2=true and
-    LANGCHAIN_API_KEY are set in .env.
+    Now LLM-routed (with keyword fallback), history-aware, and memory-synthesis
+    triggered when the session exceeds _MEMORY_TRIGGER_TURNS turns.
 
     Parameters
     ----------
     question : str
-        The user's question.
+    session_id : str, optional
+        Session identifier for SQLite persistence and MemorySaver thread_id.
+    history : list of {"role": str, "content": str}, optional
+        Prior turns; loaded from ConversationStore if omitted.
+    memory_summary : str, optional
+        Pre-computed compressed summary injected into each agent prompt.
 
     Returns
     -------
     dict
-        ``{"answer": str, "agent": str}``
+        ``{"answer": str, "agent": str, "session_id": str}``
     """
-    # Local imports to avoid circular dependency issues at module load time
+    import uuid
     from ..core.router import route_query
     from ..agents.finance_qa_agent.finance_agent import ask_finance_agent
     from ..agents.portfolio_analysis_agent.portfolio_agent import analyze_portfolio
@@ -434,44 +471,70 @@ def process_query(question: str) -> dict:
     from ..agents.tax_education_agent.tax_agent import explain_tax_concepts
     from ..agents.goal_planning_agent.goal_agent import plan_goals
     from ..agents.news_synthesizer_agent.news_agent import synthesize_news
+    from ..agents.stock_agent.stock_agent import ask_stock_agent
+    from ..memory.conversation_store import ConversationStore
+    from ..agents.memory_synthesizer_agent.memory_agent import synthesize_memory
     from ..utils.tracing import log_run
 
-    agent_name = route_query(question)
+    sid = session_id or str(uuid.uuid4())
+    store = ConversationStore()
+    history = history or store.get_history(sid, last_n=12)
+
+    # ── Memory synthesis: compress when history exceeds threshold ─────────────
+    if memory_summary is None and store.get_turn_count(sid) >= _MEMORY_TRIGGER_TURNS:
+        try:
+            memory_summary = synthesize_memory(history)
+            store.save_summary(sid, memory_summary)
+            history = store.get_history(sid, last_n=6)
+        except Exception:
+            pass  # non-fatal
+
+    # ── LLM routing with conversation context ─────────────────────────────────
+    agent_name = route_query(question, history=history, use_llm=True)
+
+    # ── Build context-enhanced prompt for non-ReAct agents ────────────────────
+    def _ctx(base: str) -> str:
+        prefix = ""
+        if memory_summary:
+            prefix += f"Previous context: {memory_summary}\n\n"
+        hist_block = _format_history(history)
+        if hist_block:
+            prefix += hist_block + "\n\n"
+        return (prefix + base).strip()
+
+    common = {"history": history, "memory_summary": memory_summary}
 
     dispatch = {
-        "finance_qa_agent":         lambda: ask_finance_agent(question),
-        "portfolio_analysis_agent": lambda: analyze_portfolio({"assets": [], "question": question}),
-        "market_analysis_agent":    lambda: analyze_market({"question": question}),
-        "goal_planning_agent":      lambda: plan_goals({"question": question}),
+        "stock_agent":              lambda: ask_stock_agent(question, **common),
+        "finance_qa_agent":         lambda: ask_finance_agent(_ctx(question)),
+        "portfolio_analysis_agent": lambda: analyze_portfolio({"assets": [], "question": _ctx(question)}),
+        "market_analysis_agent":    lambda: analyze_market({"question": _ctx(question)}),
+        "goal_planning_agent":      lambda: plan_goals({"question": _ctx(question)}),
         "news_synthesizer_agent":   lambda: synthesize_news([question]),
-        "tax_education_agent":      lambda: explain_tax_concepts(question),
+        "tax_education_agent":      lambda: explain_tax_concepts(_ctx(question)),
     }
 
+    orch_logger = logging.getLogger("orchestrator")
     try:
         handler = dispatch.get(agent_name, dispatch["finance_qa_agent"])
         answer = handler()
-        # ── LangSmith: log the top-level orchestrator run ───────────────────────
+
+        store.save_turn(sid, question, answer, agent_name)
+
         log_run(
             name="process_query",
-            inputs={"question": question, "routed_to": agent_name},
+            inputs={"question": question, "routed_to": agent_name, "session_id": sid},
             outputs={"answer": answer[:200]},
             run_type="chain",
             tags=["orchestrator", agent_name],
         )
     except Exception as exc:  # noqa: BLE001
-        # Graceful fallback to the general agent
+        orch_logger.error("Agent %s failed: %s", agent_name, exc, exc_info=True)
         try:
             answer = ask_finance_agent(question)
             agent_name = "finance_qa_agent"
-            log_run(
-                name="process_query_fallback",
-                inputs={"question": question},
-                outputs={"answer": answer[:200]},
-                run_type="chain",
-                tags=["orchestrator", "fallback"],
-                error=str(exc),
-            )
+            store.save_turn(sid, question, answer, agent_name)
         except Exception:
-            raise exc  # re-raise original if fallback also fails
+            raise exc
 
-    return {"answer": answer, "agent": agent_name}
+    return {"answer": answer, "agent": agent_name, "session_id": sid}
