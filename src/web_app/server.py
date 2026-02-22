@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from src.workflow.orchestrator import process_query
 from src.memory.conversation_store import ConversationStore
+from src.memory.portfolio_store import PortfolioStore
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Shared conversation store (singleton per server process)
 _store = ConversationStore()
+_portfolio_store = PortfolioStore()
 
 
 # ── Request / Response models ──────────────────────────────────────────────────
@@ -258,6 +260,139 @@ def portfolio_analyze(request: PortfolioRequest) -> dict:
     except Exception as exc:
         logger.error("portfolio_analyze error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ── Paper-trading portfolio endpoints (SQLite-backed) ──────────────────────────
+
+class HoldingRow(BaseModel):
+    ticker: str
+    shares: float
+    avg_cost: float
+    updated_at: str
+
+
+class TradeRow(BaseModel):
+    id: int
+    ticker: str
+    action: str
+    shares: float
+    price: float
+    total_value: float
+    timestamp: str
+
+
+class BuyRequest(BaseModel):
+    ticker: str
+    shares: float
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"ticker": "AAPL", "shares": 10}
+        }
+    }
+
+
+class SellRequest(BaseModel):
+    ticker: str
+    shares: float
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"ticker": "AAPL", "shares": 5}
+        }
+    }
+
+
+@app.get(
+    "/portfolio/holdings/{session_id}",
+    summary="Get paper-portfolio holdings for a session",
+)
+def get_holdings(session_id: str) -> dict:
+    """
+    Return all current paper-trading holdings for *session_id* as stored
+    in SQLite.  Includes ticker, shares, average cost, and last-updated time.
+    """
+    holdings = _portfolio_store.get_holdings(session_id)
+    return {"session_id": session_id, "holdings": holdings, "count": len(holdings)}
+
+
+@app.get(
+    "/portfolio/trades/{session_id}",
+    summary="Get paper-trade history for a session",
+)
+def get_trades(session_id: str, last_n: int = 50) -> dict:
+    """
+    Return the most recent *last_n* paper trades for *session_id* (default 50).
+    Each row: id, ticker, action, shares, price, total_value, timestamp.
+    """
+    trades = _portfolio_store.get_trades(session_id, last_n=last_n)
+    return {"session_id": session_id, "trades": trades, "count": len(trades)}
+
+
+@app.post(
+    "/portfolio/buy/{session_id}",
+    summary="Paper-buy shares at live market price",
+)
+def paper_buy(session_id: str, request: BuyRequest) -> dict:
+    """
+    Paper-buy *shares* of *ticker* at the current live yfinance price.
+    Updates the session's holdings in SQLite (weighted avg cost).
+
+    This endpoint is a REST shortcut; the Trading Agent also executes buys
+    automatically when the user types "buy 10 AAPL" in the chat.
+    """
+    import yfinance as yf
+    try:
+        tk = yf.Ticker(request.ticker.upper())
+        price = float(tk.fast_info.last_price or 0)
+        if price <= 0:
+            raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
+        result = _portfolio_store.buy(session_id, request.ticker, request.shares, price)
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("paper_buy error: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post(
+    "/portfolio/sell/{session_id}",
+    summary="Paper-sell shares at live market price",
+)
+def paper_sell(session_id: str, request: SellRequest) -> dict:
+    """
+    Paper-sell *shares* of *ticker* at the current live yfinance price.
+    Reduces the session's holdings in SQLite.  Returns 422 if insufficient shares.
+    """
+    import yfinance as yf
+    try:
+        tk = yf.Ticker(request.ticker.upper())
+        price = float(tk.fast_info.last_price or 0)
+        if price <= 0:
+            raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
+        result = _portfolio_store.sell(session_id, request.ticker, request.shares, price)
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("paper_sell error: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.delete(
+    "/portfolio/holdings/{session_id}",
+    summary="Clear all paper-portfolio holdings for a session",
+)
+def clear_holdings(session_id: str) -> dict:
+    """
+    Delete all holdings for *session_id*.  Trade history is preserved.
+    Useful for resetting a paper portfolio without losing the audit trail.
+    """
+    removed = _portfolio_store.clear_holdings(session_id)
+    return {"session_id": session_id, "removed": removed, "status": "cleared"}
 
 
 # ── Entry point (local dev) ────────────────────────────────────────────────────

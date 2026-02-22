@@ -1,5 +1,9 @@
 """
-Stock Analysis Agent — uses a true ReAct loop via LangGraph's create_react_agent.
+Stock Analysis Agent — uses a ReAct tool-calling loop backed by yfinance tools.
+
+LangGraph 1.x compatible: uses ChatOpenAI.bind_tools() + a manual ReAct
+tool loop.  langgraph.prebuilt.create_react_agent is NOT available in
+LangGraph 1.0.5, so we drive the tool-calling loop manually.
 
 The LLM decides when to call each yfinance tool, inspects the JSON result,
 may call additional tools (e.g. get_stock_financials after get_stock_quote),
@@ -20,8 +24,7 @@ import os
 from typing import List, Dict, Optional
 
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from src.tools.stock_tools import STOCK_TOOLS
 from src.utils.logging import get_logger
@@ -29,6 +32,9 @@ from src.utils.tracing import traceable
 from .prompts import SYSTEM_PROMPT
 
 logger = get_logger(__name__)
+
+_MAX_TOOL_ITERATIONS = 8
+
 
 # ── LLM factory ───────────────────────────────────────────────────────────────
 
@@ -41,32 +47,7 @@ def _get_llm() -> ChatOpenAI:
     )
 
 
-def create_stock_agent(llm=None):
-    """
-    Build and return a LangGraph ReAct agent for stock analysis.
-
-    The returned object is a compiled LangGraph app with a .invoke() method.
-    You usually don't need to call this directly — use ask_stock_agent() instead.
-    """
-    model = llm or _get_llm()
-    return create_react_agent(
-        model=model,
-        tools=STOCK_TOOLS,
-        prompt=SYSTEM_PROMPT,
-        name="stock_agent",
-    )
-
-
-# Module-level singleton (created lazily on first call)
-_agent = None
-
-
-def _get_agent():
-    global _agent
-    if _agent is None:
-        _agent = create_stock_agent()
-    return _agent
-
+# ── History formatter ─────────────────────────────────────────────────────────
 
 def _format_history(history: List[Dict[str, str]]) -> str:
     """Format prior turns for injection into the user message."""
@@ -77,9 +58,47 @@ def _format_history(history: List[Dict[str, str]]) -> str:
         role  = "User" if entry.get("role") == "user" else "Assistant"
         text  = entry.get("content", "")
         if entry.get("role") == "assistant" and len(text) > 400:
-            text = text[:400] + "… [truncated]"
+            text = text[:400] + "... [truncated]"
         lines.append(f"{role}: {text}")
     return "\n".join(lines)
+
+
+# ── Tool-calling ReAct loop ───────────────────────────────────────────────────
+
+def _run_react_loop(llm: ChatOpenAI, tools: list, messages: list) -> str:
+    """
+    Drive a tool-calling loop until the LLM returns a final text answer.
+
+    LangGraph 1.x removed create_react_agent from langgraph.prebuilt.
+    This function replicates the same Thought -> Action -> Observation cycle
+    using ChatOpenAI.bind_tools() directly.
+    """
+    tool_map = {t.name: t for t in tools}
+    llm_with_tools = llm.bind_tools(tools)
+    msgs = list(messages)
+
+    for _ in range(_MAX_TOOL_ITERATIONS):
+        response: AIMessage = llm_with_tools.invoke(msgs)
+        msgs.append(response)
+
+        if not getattr(response, "tool_calls", None):
+            return str(response.content)
+
+        for tc in response.tool_calls:
+            name = tc["name"]
+            args = tc["args"]
+            call_id = tc["id"]
+            try:
+                result = tool_map[name].invoke(args) if name in tool_map else f"Unknown tool: {name}"
+            except Exception as exc:  # noqa: BLE001
+                result = f"Tool error ({name}): {exc}"
+            msgs.append(ToolMessage(content=str(result), tool_call_id=call_id))
+
+    # Fallback: return last non-tool-call AI message
+    for msg in reversed(msgs):
+        if isinstance(msg, AIMessage) and msg.content and not getattr(msg, "tool_calls", None):
+            return str(msg.content)
+    return "I was unable to retrieve stock data at this time. Please try again."
 
 
 @traceable(name="stock_agent", run_type="chain", tags=["stock", "react"])
@@ -120,17 +139,9 @@ def ask_stock_agent(
     if history:
         user_content += _format_history(history)
 
-    agent = _get_agent()
-    result = agent.invoke(
-        {"messages": [HumanMessage(content=user_content)]},
-        config={"recursion_limit": 10},
-    )
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=user_content),
+    ]
 
-    # Extract the final text response
-    messages = result.get("messages", [])
-    for msg in reversed(messages):
-        content = getattr(msg, "content", None)
-        if content and isinstance(content, str) and not getattr(msg, "tool_calls", None):
-            return content.strip()
-
-    return "I was unable to retrieve stock data at this time. Please try again."
+    return _run_react_loop(_get_llm(), STOCK_TOOLS, messages)

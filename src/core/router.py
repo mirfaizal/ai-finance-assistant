@@ -208,6 +208,12 @@ class RouterAgent(BaseAgent):
 # ── LLM routing ─────────────────────────────────────────────────────────────
 
 AGENT_DESCRIPTIONS: Dict[str, str] = {
+    "trading_agent": (
+        "Paper trading only — buy or sell stocks, manage portfolio positions, "
+        "view holdings, view trade history. Triggered by explicit action words: "
+        "'buy', 'sell', 'purchase', 'add shares', 'remove position', 'trade', "
+        "'execute order', 'place order', 'sell all my', 'show my trades'."
+    ),
     "stock_agent": (
         "Individual stock prices, historical performance, P/E ratios, earnings, "
         "analyst ratings, buy/sell/hold recommendations, comparing two stocks."
@@ -307,6 +313,29 @@ def route_query_llm(
 # ── Keyword routing table (fallback) ─────────────────────────────────────────
 
 ROUTING_TABLE: Dict[str, List[str]] = {
+    # Trading agent — checked FIRST; explicit buy/sell action words
+    "trading_agent": [
+        "buy ",          # "buy 10 AAPL" — trailing space avoids matching "buy-and-hold"
+        "sell ",         # "sell 5 TSLA"
+        "purchase ",
+        "add shares",
+        "remove position",
+        "remove my position",
+        "close position",
+        "place order",
+        "execute order",
+        "execute trade",
+        "paper trade",
+        "paper trading",
+        "trade history",
+        "my trades",
+        "show my trades",
+        "trade log",
+        "sell all my",
+        "buy more",
+        "add to my position",
+        "increase my position",
+    ],
     # Stock agent — single-ticker / specific-stock queries
     "stock_agent": [
         "stock price", "share price", "trading at", "price of",
@@ -444,6 +473,35 @@ def _route_by_keywords(question: str) -> str:
     return _DEFAULT_AGENT
 
 
+
+# ── High-confidence keyword overrides (skip LLM for clear-cut intents) ────────
+# These patterns unambiguously indicate a specific agent and should never be
+# rerouted by the LLM to another agent.
+_FORCE_ROUTE: List[tuple] = [
+    # (agent_name, [keyword_substrings_any_match])
+    ("trading_agent", [
+        "buy ", "sell ", "purchase ", "add shares",
+        "close position", "open position", "place order",
+        "execute trade", "paper trade", "paper trading",
+        "my trades", "trade history", "trade log",
+        "buy more", "add to my position",
+        "view my holdings", "show my holdings", "show my current holdings",
+        "view my current holdings", "list my holdings",
+        "view my positions", "show my positions", "list my positions",
+        "check my holdings", "check my positions",
+    ]),
+]
+
+
+def _force_route(question: str) -> Optional[str]:
+    """Return an agent name if the question unambiguously matches a high-signal pattern."""
+    q = question.lower()
+    for agent_name, keywords in _FORCE_ROUTE:
+        if any(kw in q for kw in keywords):
+            return agent_name
+    return None
+
+
 def route_query(
     question: str,
     history: Optional[List[Dict[str, str]]] = None,
@@ -454,8 +512,9 @@ def route_query(
 
     Strategy
     --------
-    1. Try LLM routing (gpt-4.1-mini with conversation context).
-    2. Fall back to keyword matching from ROUTING_TABLE on failure.
+    1. High-confidence keyword override (buy/sell/trade → trading_agent; no LLM needed).
+    2. Try LLM routing (gpt-4.1-mini with conversation context).
+    3. Fall back to keyword matching from ROUTING_TABLE on failure.
 
     Parameters
     ----------
@@ -465,8 +524,19 @@ def route_query(
     use_llm : bool
         Set False to skip LLM routing (tests / low-latency paths).
     """
+    # Step 1: hard-coded high-signal overrides (no LLM latency needed)
+    forced = _force_route(question)
+    if forced:
+        _router_logger.info("Force-routed '%s...' to %s", question[:40], forced)
+        return forced
+
+    # Step 2: LLM routing
     if use_llm:
         llm_choice = route_query_llm(question, history)
         if llm_choice:
             return llm_choice
+
+    # Step 3: keyword fallback
     return _route_by_keywords(question)
+
+

@@ -472,12 +472,15 @@ def process_query(
     from ..agents.goal_planning_agent.goal_agent import plan_goals
     from ..agents.news_synthesizer_agent.news_agent import synthesize_news
     from ..agents.stock_agent.stock_agent import ask_stock_agent
+    from ..agents.trading_agent.trading_agent import ask_trading_agent
     from ..memory.conversation_store import ConversationStore
+    from ..memory.portfolio_store import PortfolioStore
     from ..agents.memory_synthesizer_agent.memory_agent import synthesize_memory
     from ..utils.tracing import log_run
 
     sid = session_id or str(uuid.uuid4())
     store = ConversationStore()
+    portfolio_store = PortfolioStore()
     history = history or store.get_history(sid, last_n=12)
 
     # ── Memory synthesis: compress when history exceeds threshold ─────────────
@@ -504,10 +507,26 @@ def process_query(
 
     common = {"history": history, "memory_summary": memory_summary}
 
+    # ── Portfolio helper: inject SQLite holdings when available ────────────────
+    def _portfolio_with_holdings(question_text: str) -> str:
+        """Enhance portfolio question with live SQLite holdings if they exist."""
+        holdings = portfolio_store.get_holdings(sid)
+        if holdings:
+            import json as _json
+            holdings_str = _json.dumps(holdings)
+            enriched = (
+                f"{question_text}\n\n"
+                f"Current paper-portfolio holdings from database:\n{holdings_str}"
+            )
+        else:
+            enriched = question_text
+        return analyze_portfolio({"assets": [], "question": _ctx(enriched)})
+
     dispatch = {
+        "trading_agent":            lambda: ask_trading_agent(question, session_id=sid, **common),
         "stock_agent":              lambda: ask_stock_agent(question, **common),
         "finance_qa_agent":         lambda: ask_finance_agent(_ctx(question)),
-        "portfolio_analysis_agent": lambda: analyze_portfolio({"assets": [], "question": _ctx(question)}),
+        "portfolio_analysis_agent": lambda: _portfolio_with_holdings(question),
         "market_analysis_agent":    lambda: analyze_market({"question": _ctx(question)}),
         "goal_planning_agent":      lambda: plan_goals({"question": _ctx(question)}),
         "news_synthesizer_agent":   lambda: synthesize_news([question]),

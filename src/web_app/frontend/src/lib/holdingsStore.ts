@@ -28,6 +28,8 @@ export function getHoldings(): Holding[] {
 
 export function saveHoldings(holdings: Holding[]): void {
   localStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
+  // Notify same-tab listeners (PortfolioChart) that holdings changed
+  window.dispatchEvent(new CustomEvent('portfolioUpdated'));
 }
 
 export function addHolding(h: Holding): void {

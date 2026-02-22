@@ -73,7 +73,7 @@ export function MarketChart() {
                             contentStyle={{ background: '#111827', border: '1px solid #1e2a3a', borderRadius: 8 }}
                             labelStyle={{ color: '#9ca3af' }}
                             itemStyle={{ color: '#e5e7eb' }}
-                            formatter={(v: number) => [`$${v.toFixed(0)}`, '']}
+                            formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(0)}`, '']}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
                         <Line type="monotone" dataKey="sp500"  stroke="#14b8a6" strokeWidth={2} dot={false} name="S&P 500" />
