@@ -39,12 +39,18 @@ const AGENT_SUGGESTIONS = [
         color: '#ec4899',
         examples: ['What are the latest financial news headlines?', 'Summarize recent Fed announcements'],
     },
+    {
+        icon: '🔬',
+        label: 'Stock Analyst',
+        color: '#f97316',
+        examples: ['What is AAPL trading at right now?', 'Compare NVDA vs AMD fundamentals', 'Is TSLA overvalued?'],
+    },
 ];
 import { MessageBubble } from './MessageBubble';
 import { AgentBadge } from './AgentBadge';
 import { detectAgent, getAgent, backendAgentToType } from '../lib/agentEngine';
 import { askQuestion } from '../lib/api';
-import { appendMessage, getSession } from '../lib/storage';
+import { appendMessage, getSession, getBackendSessionId, setBackendSessionId } from '../lib/storage';
 import type { Message, AgentType } from '../lib/types';
 
 interface ChatInterfaceProps {
@@ -113,7 +119,11 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
 
         setLoading(true);
         try {
-            const res = await askQuestion(text);
+            // Pass the backend session UUID so the server can recall prior turns
+            const backendSid = getBackendSessionId(sessionId);
+            const res = await askQuestion(text, backendSid);
+            // Persist the backend UUID for subsequent messages in this session
+            setBackendSessionId(sessionId, res.session_id);
             // Use the backend's actual agent, not the client-side guess
             const confirmedAgent = backendAgentToType(res.agent);
             setActiveAgent(confirmedAgent);
@@ -176,6 +186,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
                             <span style={{ color: '#3b82f6' }}>📊 Portfolio Analyst</span>
                             <span style={{ color: '#10b981' }}>🎯 Goal Planner</span>
                             <span style={{ color: '#ec4899' }}>📰 News Synthesizer</span>
+                            <span style={{ color: '#f97316' }}>🔬 Stock Analyst</span>
                         </div>
                         <p className="empty-hint">The right agent is automatically selected based on your question.</p>
                     </motion.div>

@@ -49,9 +49,31 @@ export const AGENTS: Record<AgentType, Agent> = {
     accent: 'pink',
     description: 'Financial news synthesis and market context',
   },
+  stock: {
+    type: 'stock',
+    name: 'Finnie Stock',
+    title: 'Stock Analyst',
+    color: '#f97316',
+    accent: 'orange',
+    description: 'Live stock quotes, financials, technicals and fundamentals via yfinance',
+  },
 };
 
 // ── Keyword maps (order determines priority) ──────────────────────────────────
+
+// Individual stock / fundamentals queries — checked before generic ANALYST_KEYWORDS
+const STOCK_KEYWORDS = [
+  // live price signals
+  'stock price', 'trading at', 'quote', 'share price', 'current price',
+  // fundamentals
+  'pe ratio', 'p/e', 'eps', 'earnings per share', 'price to earnings',
+  'revenue', 'margins', 'debt to equity', 'roe', 'analyst target',
+  'analyst rating', 'analyst recommendation', 'buy rating', 'sell rating',
+  // history / technicals
+  '52-week', '52 week', 'all time high', 'year to date', 'ytd return',
+  'stock history', 'stock chart', 'candlestick',
+  // explicit ticker patterns (3–5 upper-case letters) handled via regex in detectAgent
+];
 
 const PORTFOLIO_KEYWORDS = [
   'portfolio', 'holdings', 'allocation', 'diversif', 'rebalance',
@@ -86,15 +108,22 @@ const PLANNER_KEYWORDS = [
   'timeline', 'financial plan', 'how much should i', 'financial goal',
 ];
 
+// Matches lone ticker symbols like AAPL, NVDA, TSLA (2-5 upper-case letters surrounded by word boundaries)
+const TICKER_RE = /\b[A-Z]{2,5}\b/;
+
 export function detectAgent(message: string): AgentType {
   const q = message.toLowerCase();
 
   // Order mirrors backend router.py — most-specific first
-  if (PORTFOLIO_KEYWORDS.some((kw) => q.includes(kw))) return 'portfolio';
-  if (NEWS_KEYWORDS.some((kw) => q.includes(kw)))       return 'news';      // before analyst
-  if (ANALYST_KEYWORDS.some((kw) => q.includes(kw)))    return 'analyst';
-  if (TAX_KEYWORDS.some((kw) => q.includes(kw)))        return 'tax_pro';
-  if (PLANNER_KEYWORDS.some((kw) => q.includes(kw)))    return 'planner';
+  if (PORTFOLIO_KEYWORDS.some((kw) => q.includes(kw)))  return 'portfolio';
+  if (NEWS_KEYWORDS.some((kw) => q.includes(kw)))        return 'news';      // before analyst
+  // Stock-specific fundamentals / live price queries
+  if (STOCK_KEYWORDS.some((kw) => q.includes(kw)))       return 'stock';
+  // Raw ticker symbol with a price/action verb nearby
+  if (TICKER_RE.test(message) && /price|trading|worth|buy|sell|hold|overvalued|undervalued|target|forecast|up|down/.test(q)) return 'stock';
+  if (ANALYST_KEYWORDS.some((kw) => q.includes(kw)))     return 'analyst';
+  if (TAX_KEYWORDS.some((kw) => q.includes(kw)))         return 'tax_pro';
+  if (PLANNER_KEYWORDS.some((kw) => q.includes(kw)))     return 'planner';
   return 'advisor';
 }
 
@@ -107,6 +136,7 @@ export function backendAgentToType(backendName: string): AgentType {
     tax_education_agent:      'tax_pro',
     goal_planning_agent:      'planner',
     news_synthesizer_agent:   'news',
+    stock_agent:              'stock',
   };
   return map[backendName] ?? 'advisor';
 }

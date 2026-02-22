@@ -1,12 +1,94 @@
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, BookOpen, ArrowRight } from 'lucide-react';
-import { QUICK_INSIGHTS, QUICK_ACTIONS, EDUCATIONAL_CARDS } from '../lib/mockData';
+import { QUICK_ACTIONS, EDUCATIONAL_CARDS } from '../lib/mockData';
+
+const BASE_URL  = 'http://localhost:8000';
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface Insight {
+    id: number;
+    icon: string;
+    title: string;
+    desc: string;
+    badge: string;
+    badgeColor: string;
+}
+
+// Fallback shown while loading or if backend is offline
+const FALLBACK_INSIGHTS: Insight[] = [
+    { id: 1, icon: '📈', title: 'S&P 500',          desc: 'Loading live data…',                       badge: 'Markets',  badgeColor: '#8b5cf6' },
+    { id: 2, icon: '📊', title: 'Nasdaq 100',        desc: 'Loading live data…',                       badge: 'Markets',  badgeColor: '#14b8a6' },
+    { id: 3, icon: '⚡', title: 'Volatility (VIX)',  desc: 'The VIX fear index measures market risk.', badge: 'Risk',     badgeColor: '#f59e0b' },
+];
+
+function buildInsights(overview: Record<string, { price: number | null; change_pct: number | null }>): Insight[] {
+    const fmt    = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
+    const fmtPx  = (v: number | null) => v != null ? `$${v.toFixed(2)}` : '—';
+    const color  = (v: number | null) => v != null && v >= 0 ? '#10b981' : '#ef4444';
+
+    const spy = overview['SPY'];
+    const qqq = overview['QQQ'];
+    const vix = overview['^VIX'];
+
+    return [
+        {
+            id: 1,
+            icon: spy?.change_pct != null && spy.change_pct >= 0 ? '📈' : '📉',
+            title: `S&P 500  ${fmtPx(spy?.price ?? null)}`,
+            desc:  `Day change: ${fmt(spy?.change_pct ?? null)}`,
+            badge: 'Markets',
+            badgeColor: color(spy?.change_pct ?? null),
+        },
+        {
+            id: 2,
+            icon: qqq?.change_pct != null && qqq.change_pct >= 0 ? '🚀' : '📉',
+            title: `Nasdaq 100  ${fmtPx(qqq?.price ?? null)}`,
+            desc:  `Day change: ${fmt(qqq?.change_pct ?? null)}`,
+            badge: 'Tech',
+            badgeColor: '#14b8a6',
+        },
+        {
+            id: 3,
+            icon: '⚡',
+            title: `VIX  ${vix?.price != null ? vix.price.toFixed(2) : '—'}`,
+            desc:  vix?.price != null
+                ? vix.price < 20  ? 'Low volatility — markets are calm.'
+                : vix.price < 30  ? 'Moderate volatility — some uncertainty.'
+                                  : 'High volatility — elevated market fear.'
+                : 'Fear index data loading…',
+            badge: 'Risk',
+            badgeColor: vix?.price != null && vix.price > 25 ? '#f59e0b' : '#6b7280',
+        },
+    ];
+}
 
 interface DashboardProps {
     onStartChat: (prefill?: string) => void;
 }
 
 export function Dashboard({ onStartChat }: DashboardProps) {
+    const [insights, setInsights] = useState<Insight[]>(FALLBACK_INSIGHTS);
+    const cachedAt = useRef<number>(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function load() {
+            if (Date.now() - cachedAt.current < CACHE_TTL) return;
+            try {
+                const res = await fetch(`${BASE_URL}/market/overview`);
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!cancelled) {
+                    cachedAt.current = Date.now();
+                    setInsights(buildInsights(json));
+                }
+            } catch { /* keep fallback */ }
+        }
+        load();
+        return () => { cancelled = true; };
+    }, []);
+
     return (
         <div className="dashboard">
             {/* Hero */}
@@ -25,11 +107,11 @@ export function Dashboard({ onStartChat }: DashboardProps) {
                 </button>
             </motion.div>
 
-            {/* Insights */}
+            {/* Live Insights */}
             <section className="section">
                 <h2 className="section-title">Today's Insights</h2>
                 <div className="insights-grid">
-                    {QUICK_INSIGHTS.map((ins, i) => (
+                    {insights.map((ins, i) => (
                         <motion.div
                             key={ins.id}
                             className="insight-card"
@@ -72,7 +154,7 @@ export function Dashboard({ onStartChat }: DashboardProps) {
 
             {/* Educational */}
             <section className="section">
-                <h2 className="section-title">Learn & Grow</h2>
+                <h2 className="section-title">Learn &amp; Grow</h2>
                 <div className="edu-list">
                     {EDUCATIONAL_CARDS.map((card, i) => (
                         <motion.button
@@ -100,3 +182,4 @@ export function Dashboard({ onStartChat }: DashboardProps) {
         </div>
     );
 }
+

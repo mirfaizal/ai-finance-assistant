@@ -1399,3 +1399,143 @@ textarea {
 .msg-markdown a:hover {
   opacity: 0.8;
 }
+
+/* ── Chart skeleton (loading state) ───────────────────────────────────────── */
+.chart-skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #1e2a3a 25%, #243040 50%, #1e2a3a 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Portfolio summary row ────────────────────────────────────────────────── */
+.portfolio-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  color: #9ca3af;
+  border-top: 1px solid #1e2a3a;
+  margin-top: 4px;
+}
+.portfolio-summary-row strong { color: #e5e7eb; }
+
+/* ── Chart empty hint ────────────────────────────────────────────────────── */
+.chart-empty-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+.pi-add-link {
+  background: none;
+  border: none;
+  color: var(--accent-teal);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.pi-add-link:hover { text-decoration: underline; }
+
+/* ── PortfolioInput panel ────────────────────────────────────────────────── */
+.portfolio-input-panel {
+  padding: 8px 10px 4px;
+  border-bottom: 1px solid #1e2a3a;
+  margin-bottom: 6px;
+}
+.pi-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0 0 6px;
+}
+.pi-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.pi-field {
+  background: #111827;
+  border: 1px solid #1e2a3a;
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-size: 12px;
+  padding: 4px 6px;
+  outline: none;
+}
+.pi-field:focus { border-color: var(--accent-teal); }
+.pi-ticker  { width: 56px; text-transform: uppercase; }
+.pi-shares  { width: 56px; }
+.pi-cost    { flex: 1; }
+.pi-add-btn {
+  background: var(--accent-teal);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pi-add-btn:hover { opacity: 0.85; }
+.pi-error {
+  font-size: 11px;
+  color: #ef4444;
+  margin: 4px 0 0;
+}
+.pi-holdings-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pi-holding-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.pi-holding-ticker {
+  font-weight: 600;
+  color: #e5e7eb;
+  min-width: 42px;
+}
+.pi-holding-meta { flex: 1; }
+.pi-remove-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.pi-remove-btn:hover { color: #ef4444; }
+
+/* ── Edit icon button on chart card ──────────────────────────────────────── */
+.pi-icon-btn {
+  background: none;
+  border: 1px solid #1e2a3a;
+  border-radius: 4px;
+  color: #6b7280;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.pi-icon-btn:hover { color: var(--accent-teal); border-color: var(--accent-teal); }

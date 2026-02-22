@@ -105,24 +105,34 @@ class WorkflowState(BaseModel):
     # Input
     original_query: str = Field(description="The original user query")
     session_id: str = Field(description="Unique session identifier")
-    
+
+    # Conversation memory (Step 1 / 5b)
+    conversation_history: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Ordered list of prior {role, content} turns for this session",
+    )
+    memory_summary: Optional[str] = Field(
+        None,
+        description="Compressed memory summary from the memory synthesizer (replaces old raw turns)",
+    )
+
     # Routing
     current_agent: Optional[str] = Field(None, description="Name of the currently active agent")
     next_agent: Optional[str] = Field(None, description="Name of the next agent to execute")
     routing_decision: Dict[str, Any] = Field(default_factory=dict, description="Router's decision context")
-    
+
     # Communication
     messages: List[AgentMessage] = Field(default_factory=list, description="All messages exchanged")
     agent_outputs: Dict[str, AgentOutput] = Field(default_factory=dict, description="Outputs from each agent")
-    
+
     # Context
     context: Dict[str, Any] = Field(default_factory=dict, description="Shared context across agents")
-    
+
     # Control
     is_complete: bool = Field(default=False, description="Whether the workflow is complete")
     iteration_count: int = Field(default=0, description="Number of iterations/agent calls")
     max_iterations: int = Field(default=10, description="Maximum allowed iterations")
-    
+
     # Final output
     final_result: Optional[Any] = Field(None, description="Final result to return to user")
     final_status: AgentStatus = Field(default=AgentStatus.IDLE, description="Final execution status")

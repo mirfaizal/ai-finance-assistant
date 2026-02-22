@@ -4,6 +4,8 @@ import type { ChatSession, Message, UserProfile } from './types';
 const SESSIONS_KEY = 'finnie_sessions';
 const ACTIVE_SESSION_KEY = 'finnie_active_session';
 const PROFILE_KEY = 'finnie_profile';
+/** Maps frontend session UUID → backend session UUID for memory continuity. */
+const BACKEND_SESSION_MAP_KEY = 'finnie_backend_session_map';
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,7 @@ export function deleteSession(sessionId: string): void {
   if (getActiveSessionId() === sessionId) {
     localStorage.removeItem(ACTIVE_SESSION_KEY);
   }
+  removeBackendSessionId(sessionId);
 }
 
 export function appendMessage(sessionId: string, message: Message): void {
@@ -70,6 +73,58 @@ export function appendMessage(sessionId: string, message: Message): void {
   }
 
   saveSessions(sessions);
+}
+
+// ── Backend session mapping ───────────────────────────────────────────────────
+
+/**
+ * Retrieve the backend UUID associated with a frontend chat session.
+ * Returns `null` on the first message of a brand-new session.
+ */
+export function getBackendSessionId(frontendSessionId: string): string | null {
+  try {
+    const map: Record<string, string> = JSON.parse(
+      localStorage.getItem(BACKEND_SESSION_MAP_KEY) ?? '{}',
+    );
+    return map[frontendSessionId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist the backend UUID for a frontend chat session so that future
+ * messages are sent with the correct session context.
+ */
+export function setBackendSessionId(
+  frontendSessionId: string,
+  backendSessionId: string,
+): void {
+  try {
+    const map: Record<string, string> = JSON.parse(
+      localStorage.getItem(BACKEND_SESSION_MAP_KEY) ?? '{}',
+    );
+    map[frontendSessionId] = backendSessionId;
+    localStorage.setItem(BACKEND_SESSION_MAP_KEY, JSON.stringify(map));
+  } catch {
+    // localStorage unavailable — silently ignore (session will be stateless)
+  }
+}
+
+/**
+ * Remove the backend session mapping when the user deletes a chat session,
+ * so stale UUIDs don't accumulate in localStorage.
+ */
+export function removeBackendSessionId(frontendSessionId: string): void {
+  try {
+    const map: Record<string, string> = JSON.parse(
+      localStorage.getItem(BACKEND_SESSION_MAP_KEY) ?? '{}',
+    );
+    delete map[frontendSessionId];
+    localStorage.setItem(BACKEND_SESSION_MAP_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────
