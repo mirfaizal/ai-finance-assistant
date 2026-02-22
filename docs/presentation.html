@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Finance Assistant – Capstone Presentation</title>
+<style>
+  /* ── Reset & Base ──────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #21262d;
+    --border:    #30363d;
+    --accent:    #58a6ff;
+    --accent2:   #3fb950;
+    --warn:      #f0883e;
+    --purple:    #bc8cff;
+    --pink:      #ff6eb3;
+    --text:      #c9d1d9;
+    --text-dim:  #8b949e;
+    --white:     #f0f6fc;
+    --gold:      #e3b341;
+    --teal:      #39d0d8;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── Slide Container ────────────────────────────────────────────────── */
+  #deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 52px 72px 40px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity .45s ease, transform .45s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+    transition: opacity .35s ease, transform .35s ease;
+  }
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.2; color: var(--white); }
+  h2 { font-size: 1.9rem; font-weight: 700; color: var(--white); margin-bottom: 28px; }
+  h3 { font-size: 1.15rem; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  p  { font-size: 1rem; line-height: 1.7; color: var(--text); }
+  .subtitle  { font-size: 1.25rem; color: var(--text-dim); margin-top: 10px; }
+  .tag { display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+         border-radius: 20px; padding: 3px 12px; font-size: .78rem; color: var(--text-dim);
+         margin: 3px; }
+
+  /* Slide header bar */
+  .slide-header { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+  .slide-num { font-size: .78rem; color: var(--text-dim); }
+  .slide-title-line { flex: 1; height: 1px; background: linear-gradient(to right, var(--border), transparent); }
+
+  /* ── Grid helpers ───────────────────────────────────────────────────── */
+  .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3  { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  .grid-6  { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+
+  /* ── Card ───────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .card.accent-left { border-left: 3px solid var(--accent); }
+  .card.green-left  { border-left: 3px solid var(--accent2); }
+  .card.gold-left   { border-left: 3px solid var(--gold); }
+  .card.purple-left { border-left: 3px solid var(--purple); }
+  .card.pink-left   { border-left: 3px solid var(--pink); }
+  .card.teal-left   { border-left: 3px solid var(--teal); }
+  .card.warn-left   { border-left: 3px solid var(--warn); }
+
+  .icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+  .card h3 { margin-bottom: 6px; }
+  .card p  { font-size: .92rem; color: var(--text-dim); }
+
+  /* ── Code block ─────────────────────────────────────────────────────── */
+  pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: .82rem;
+    line-height: 1.55;
+    overflow-x: auto;
+    color: #e6edf3;
+  }
+  .kw  { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .cm  { color: var(--text-dim); font-style: italic; }
+  .fn  { color: #d2a8ff; }
+  .num { color: var(--teal); }
+
+  /* ── Flow diagram ───────────────────────────────────────────────────── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: .82rem;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .flow-box.hl  { border-color: var(--accent);  color: var(--accent); }
+  .flow-box.hl2 { border-color: var(--accent2); color: var(--accent2); }
+  .flow-box.hl3 { border-color: var(--gold);    color: var(--gold); }
+  .flow-box.hl4 { border-color: var(--purple);  color: var(--purple); }
+  .arrow { color: var(--text-dim); font-size: .9rem; }
+
+  /* ── Stack badge ─────────────────────────────────────────────────────── */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .stack-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .stack-item .logo { font-size: 2rem; margin-bottom: 6px; }
+  .stack-item .name { font-size: .85rem; font-weight: 600; color: var(--white); }
+  .stack-item .role { font-size: .75rem; color: var(--text-dim); margin-top: 2px; }
+
+  /* ── Agent pill list ────────────────────────────────────────────────── */
+  .agent-pill {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    margin-bottom: 10px;
+  }
+  .agent-pill .emoji { font-size: 1.5rem; }
+  .agent-pill .info  { flex: 1; }
+  .agent-pill .info  strong { color: var(--white); font-size: .95rem; }
+  .agent-pill .info  p { font-size: .82rem; color: var(--text-dim); margin: 0; }
+  .agent-pill .keywords { font-size: .72rem; color: var(--text-dim); }
+
+  /* ── Arch diagram ───────────────────────────────────────────────────── */
+  .arch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .arch-row { display: flex; align-items: center; gap: 8px; }
+  .arch-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: .82rem;
+    text-align: center;
+    color: var(--text);
+  }
+  .arch-box.top  { border-color: var(--accent);  color: var(--accent);  font-weight: 600; min-width: 180px; }
+  .arch-box.mid  { border-color: var(--gold);    color: var(--gold);    font-weight: 600; min-width: 220px; }
+  .arch-box.route{ border-color: var(--purple);  color: var(--purple);  font-weight: 600; min-width: 200px; }
+  .arch-box.ag   { border-color: var(--accent2); color: var(--accent2); min-width: 100px; font-size: .75rem; }
+  .arch-box.ext  { border-color: var(--teal);    color: var(--teal);    min-width: 130px; font-size: .75rem; }
+  .arch-vline { width: 1px; height: 20px; background: var(--border); margin: 0 auto; }
+  .arch-hline { height: 1px; width: 40px; background: var(--border); }
+
+  /* ── Bullet list ────────────────────────────────────────────────────── */
+  ul.bullets { list-style: none; }
+  ul.bullets li {
+    padding: 7px 0 7px 28px;
+    position: relative;
+    font-size: .95rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--surface2);
+  }
+  ul.bullets li::before {
+    content: '›';
+    position: absolute;
+    left: 8px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── Title slide specific ───────────────────────────────────────────── */
+  #slide-title { justify-content: center; align-items: center; text-align: center; }
+  #slide-title h1 { font-size: 3.2rem; background: linear-gradient(135deg, var(--accent), var(--teal));
+                    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                    background-clip: text; }
+  #slide-title .sub2 { color: var(--text-dim); font-size: .9rem; margin-top: 4px; }
+  .logo-row { display: flex; gap: 10px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+  .logo-badge {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: .82rem;
+    color: var(--text-dim);
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    background: rgba(240,136,62,.08);
+    border: 1px solid rgba(240,136,62,.3);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: .78rem;
+    color: var(--warn);
+    margin-top: auto;
+  }
+
+  /* ── Navigation ─────────────────────────────────────────────────────── */
+  #nav {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(22,27,34,.9);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 20px;
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    user-select: none;
+  }
+  #nav button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 50%;
+    width: 34px; height: 34px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s, color .2s;
+  }
+  #nav button:hover { background: var(--surface2); color: var(--white); }
+  #nav button:disabled { opacity: .3; cursor: default; }
+  #progress-text { font-size: .82rem; color: var(--text-dim); min-width: 52px; text-align: center; }
+  #slide-dots { display: flex; gap: 5px; }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border); cursor: pointer; transition: background .2s;
+  }
+  .dot.active { background: var(--accent); }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: linear-gradient(to right, var(--accent), var(--teal));
+    transition: width .4s ease;
+    z-index: 200;
+  }
+
+  /* Keyboard hint */
+  #key-hint {
+    position: fixed; bottom: 24px; right: 24px;
+    font-size: .72rem; color: var(--text-dim);
+    background: rgba(22,27,34,.8);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px;
+    pointer-events: none;
+  }
+
+  /* Number highlight */
+  .big-num { font-size: 2.4rem; font-weight: 700; color: var(--accent); line-height: 1; }
+  .big-label { font-size: .82rem; color: var(--text-dim); }
+
+  .stat-row { display: flex; gap: 28px; margin: 12px 0; }
+  .stat { text-align: center; }
+
+  .highlight { color: var(--accent); font-weight: 600; }
+  .green { color: var(--accent2); font-weight: 600; }
+  .gold  { color: var(--gold); font-weight: 600; }
+  .purple{ color: var(--purple); font-weight: 600; }
+  .pink  { color: var(--pink); font-weight: 600; }
+  .teal  { color: var(--teal); font-weight: 600; }
+
+  /* Two-col layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<div id="deck">
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 1 – TITLE                                                    -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide" id="slide-title">
+    <div style="text-align:center">
+      <div style="font-size:4rem;margin-bottom:16px">🤖💰</div>
+      <h1>AI Finance Assistant</h1>
+      <p class="subtitle">A Production-Ready Multi-Agent AI System for Financial Education</p>
+      <p class="sub2">Capstone Project · 2026</p>
+
+      <div class="logo-row">
+        <span class="logo-badge">🧠 GPT-4.1</span>
+        <span class="logo-badge">🔗 LangGraph</span>
+        <span class="logo-badge">⚡ FastAPI</span>
+        <span class="logo-badge">⚛️ React + TypeScript</span>
+        <span class="logo-badge">🌲 Pinecone RAG</span>
+        <span class="logo-badge">🔍 Tavily Search</span>
+        <span class="logo-badge">🔭 LangSmith</span>
+      </div>
+
+      <div style="margin-top:36px" class="stat-row" style="justify-content:center">
+        <div class="stat"><div class="big-num">6</div><div class="big-label">Specialized Agents</div></div>
+        <div class="stat" style="margin:0 32px"><div class="big-num" style="color:var(--accent2)">3</div><div class="big-label">AI Integrations</div></div>
+        <div class="stat"><div class="big-num" style="color:var(--gold)">∞</div><div class="big-label">Real-Time Data</div></div>
+      </div>
+    </div>
+
+    <div class="disclaimer" style="margin-top:40px;max-width:680px;text-align:center;margin-left:auto;margin-right:auto">
+      ⚠️ Provides <strong>general financial education only</strong> — not personalised investment, tax, or legal advice.
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 2 – PROBLEM STATEMENT                                        -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">02</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">The Problem</h2>
+    </div>
+
+    <div class="grid-3" style="flex:1">
+      <div class="card warn-left">
+        <span class="icon">🧩</span>
+        <h3 style="color:var(--warn)">Financial Knowledge Fragmentation</h3>
+        <p>Retail investors must consult multiple disconnected sources for market data, tax rules, portfolio advice, and financial news — creating friction and information overload.</p>
+      </div>
+      <div class="card accent-left">
+        <span class="icon">⏱️</span>
+        <h3>Stale &amp; Generic Answers</h3>
+        <p>Static chatbots / FAQs can't answer questions that require <em>today's</em> market conditions or personalised goal context. One-size-fits-all responses don't help.</p>
+      </div>
+      <div class="card purple-left">
+        <span class="icon">🔒</span>
+        <h3 style="color:var(--purple)">Lack of Trustworthy AI Observability</h3>
+        <p>Existing AI assistants are black boxes — no audit trail, no grounding citations, and no way to trace <em>why</em> a particular answer was given.</p>
+      </div>
+    </div>
+
+    <div class="card green-left" style="margin-top:18px">
+      <h3 style="color:var(--accent2)">✅ Our Solution</h3>
+      <p>A <span class="highlight">multi-agent orchestration system</span> where each query is routed to a domain expert agent, enriched with <span class="green">live web search</span> and <span class="teal">RAG document context</span>, and every run is traced end-to-end in <span class="purple">LangSmith</span>.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 3 – ARCHITECTURE OVERVIEW                                    -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">03</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">System Architecture</h2>
+    </div>
+
+    <div class="two-col" style="flex:1;align-items:center">
+      <div>
+        <div class="arch">
+          <div class="arch-box top">🖥️ React / TypeScript Frontend</div>
+          <div class="arch-vline"></div>
+          <div class="arch-box top">⚡ FastAPI  server.py</div>
+          <div class="arch-vline"></div>
+          <div class="arch-box mid">🔗 LangGraph Orchestrator<br><small style="opacity:.7">router → execute_agent → finalize</small></div>
+          <div class="arch-vline"></div>
+          <div class="arch-box route">🧭 Keyword Router (router.py)</div>
+          <div class="arch-vline"></div>
+          <div class="arch-row">
+            <div class="arch-box ag">💰 Finance<br>Q&amp;A</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag">📊 Portfolio</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag">📈 Market</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag">🎯 Goals</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag">📰 News</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ag">📋 Tax</div>
+          </div>
+          <div class="arch-vline"></div>
+          <div class="arch-row">
+            <div class="arch-box ext">🔍 Tavily Search</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ext">🌲 Pinecone RAG</div>
+            <div class="arch-hline"></div>
+            <div class="arch-box ext">🔭 LangSmith</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card accent-left">
+          <h3>LangGraph StateGraph</h3>
+          <p>Workflow nodes: <code>route_query</code> → <code>execute_agent</code> → <code>finalize</code>. State flows immutably through typed <code>WorkflowState</code>.</p>
+        </div>
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Enriched Request Flow</h3>
+          <div class="flow">
+            <div class="flow-box hl">POST /ask</div>
+            <span class="arrow">→</span>
+            <div class="flow-box">Validate</div>
+            <span class="arrow">→</span>
+            <div class="flow-box hl4">Route</div>
+            <span class="arrow">→</span>
+            <div class="flow-box hl2">Agent</div>
+            <span class="arrow">→</span>
+            <div class="flow-box hl3">GPT-4.1</div>
+            <span class="arrow">→</span>
+            <div class="flow-box hl">Response</div>
+          </div>
+        </div>
+        <div class="card purple-left">
+          <h3 style="color:var(--purple)">Per-Agent Context Injection</h3>
+          <p>Each agent independently decides: <span class="highlight">① Tavily?</span> (real-time query) → <span class="green">② Pinecone RAG?</span> (conceptual query) → builds enriched system prompt before calling GPT-4.1.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 4 – THE 6 AGENTS                                             -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">04</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">6 Specialized Agents</h2>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="agent-pill">
+          <span class="emoji">💰</span>
+          <div class="info">
+            <strong>Finance Q&amp;A Agent</strong>
+            <p>Answers general financial education questions — concepts, definitions, current events.</p>
+            <span class="keywords">keywords: inflation, interest rate, GDP, bond, ETF, Fed…</span>
+          </div>
+        </div>
+        <div class="agent-pill">
+          <span class="emoji">📊</span>
+          <div class="info">
+            <strong>Portfolio Analysis Agent</strong>
+            <p>Analyses asset allocation, diversification, risk/return, rebalancing strategies.</p>
+            <span class="keywords">keywords: portfolio, rebalance, allocation, holdings, diversify…</span>
+          </div>
+        </div>
+        <div class="agent-pill">
+          <span class="emoji">📈</span>
+          <div class="info">
+            <strong>Market Analysis Agent</strong>
+            <p>Covers stock trends, sector movements, technical &amp; fundamental analysis education.</p>
+            <span class="keywords">keywords: market, stock, bull run, bear market, sector, S&P…</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="agent-pill">
+          <span class="emoji">🎯</span>
+          <div class="info">
+            <strong>Goal Planning Agent</strong>
+            <p>Helps users think through financial goals — retirement, education savings, home purchase.</p>
+            <span class="keywords">keywords: retire, goal, savings plan, FIRE, 401k, college fund…</span>
+          </div>
+        </div>
+        <div class="agent-pill">
+          <span class="emoji">📰</span>
+          <div class="info">
+            <strong>News Synthesizer Agent</strong>
+            <p>Aggregates &amp; summarises financial news, earnings reports, macro updates in real time.</p>
+            <span class="keywords">keywords: news, earnings, quarterly, report, announcement…</span>
+          </div>
+        </div>
+        <div class="agent-pill">
+          <span class="emoji">📋</span>
+          <div class="info">
+            <strong>Tax Education Agent</strong>
+            <p>Provides general tax education — capital gains, deductions, IRS rules, tax-loss harvesting.</p>
+            <span class="keywords">keywords: tax, capital gains, IRS, deduction, write-off, 1099…</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 5 – INTELLIGENT ROUTING                                      -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">05</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Intelligent Routing</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>Keyword Scoring Algorithm</h3>
+          <p>Each agent declares a list of domain keywords. The router scores the query against every agent's keywords and dispatches to the <span class="highlight">highest scorer</span>. Ties default to the Finance Q&amp;A agent.</p>
+        </div>
+
+        <pre><code><span class="cm"># router.py (simplified)</span>
+<span class="kw">def</span> <span class="fn">route_query</span>(self, question: str) <span class="kw">-></span> str:
+    scores = {}
+    <span class="kw">for</span> name, agent <span class="kw">in</span> self.agent_registry.items():
+        score = agent.<span class="fn">can_handle</span>(question)
+        scores[name] = score
+
+    best = <span class="fn">max</span>(scores, key=scores.<span class="fn">get</span>)
+    <span class="kw">return</span> best  <span class="cm"># e.g. "tax_education_agent"</span></code></pre>
+
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Extensible Design</h3>
+          <p>New agents are registered automatically. Subclass <code>BaseAgent</code>, implement <code>can_handle()</code> and <code>process()</code> — the router picks them up with zero config changes.</p>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card gold-left" style="margin-bottom:0">
+          <h3 style="color:var(--gold)">Example Routing Decisions</h3>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:2px">
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"What are capital gains taxes on ETFs?"</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--warn);color:var(--warn)">📋 Tax Agent</div>
+          </div>
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"How should I rebalance my 60/40 portfolio?"</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--accent2);color:var(--accent2)">📊 Portfolio Agent</div>
+          </div>
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Latest NVIDIA earnings report summary?"</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--pink);color:var(--pink)">📰 News Agent</div>
+          </div>
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"I want to retire at 55. Where do I start?"</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--gold);color:var(--gold)">🎯 Goal Agent</div>
+          </div>
+          <div class="flow" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+            <span style="font-size:.82rem;color:var(--text-dim);flex:1"><em>"Is the S&P 500 in a bull run right now?"</em></span>
+            <span class="arrow">→</span>
+            <div class="flow-box" style="border-color:var(--teal);color:var(--teal)">📈 Market Agent</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 6 – RAG + WEB SEARCH                                         -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">06</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Context Enrichment Pipeline</h2>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:18px">
+      <div class="card accent-left">
+        <span class="icon">🔍</span>
+        <h3>Tavily Real-Time Search</h3>
+        <p>Queries are classified as <em>real-time</em> if they contain signals like <em>"today", "current", "latest", "now", "price"</em>. Tavily fetches live web results, which are injected into the system prompt.</p>
+      </div>
+      <div class="card teal-left">
+        <span class="icon">🌲</span>
+        <h3 style="color:var(--teal)">Pinecone Vector RAG</h3>
+        <p>Conceptual questions trigger a Pinecone similarity search. The top-k document chunks are retrieved and embedded into the prompt, giving GPT-4.1 grounded, domain-specific knowledge.</p>
+      </div>
+      <div class="card purple-left">
+        <span class="icon">🔭</span>
+        <h3 style="color:var(--purple)">LangSmith Tracing</h3>
+        <p>Every <code>@traceable</code>-decorated agent call and orchestrator run is logged to LangSmith. Full input/output, latency, token usage, and tags are visible in the UI.</p>
+      </div>
+    </div>
+
+    <div class="card green-left">
+      <h3 style="color:var(--accent2)">Enriched Prompt Construction (per agent)</h3>
+      <pre style="margin-top:8px"><code><span class="cm"># finance_agent.py</span>
+<span class="kw">if</span> <span class="fn">is_realtime_query</span>(question):          <span class="cm">## "current Fed chair?"  → True</span>
+    web_context = <span class="fn">web_search</span>(question)    <span class="cm">## Tavily API call</span>
+
+<span class="kw">if</span> <span class="fn">should_use_rag</span>(question):             <span class="cm">## "what is a bond?"    → True</span>
+    rag_context = <span class="fn">get_rag_context</span>(question, top_k=<span class="num">3</span>, agent_filter=<span class="str">"finance_qa"</span>)
+
+system_prompt = BASE_PROMPT + web_context + rag_context + <span class="fn">f</span><span class="str">"Today is {today}."</span></code></pre>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 7 – FRONTEND                                                 -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">07</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">React + TypeScript Frontend</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>Interactive Dashboard</h3>
+          <p>Portfolio performance chart, market overview, and a real-time chat interface — all in one responsive single-page application built with <span class="highlight">Vite + React 18</span>.</p>
+        </div>
+        <div class="card gold-left">
+          <h3 style="color:var(--gold)">Key Components</h3>
+          <ul class="bullets" style="font-size:.88rem">
+            <li><code>ChatInterface.tsx</code> — streaming chat with agent identification</li>
+            <li><code>Dashboard.tsx</code> — main layout with sidebar panels</li>
+            <li><code>PortfolioChart.tsx</code> — interactive portfolio visualisation</li>
+            <li><code>MarketChart.tsx</code> — live market data chart</li>
+            <li><code>AgentBadge.tsx</code> — shows which agent answered</li>
+            <li><code>RiskModal.tsx</code> — risk profile configuration</li>
+          </ul>
+        </div>
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Type-Safe API Layer</h3>
+          <p><code>src/lib/api.ts</code> provides a typed client for all backend calls. <code>agentEngine.ts</code> abstracts agent routing logic for the frontend layer.</p>
+        </div>
+      </div>
+      <div class="col" style="justify-content:center;align-items:center">
+        <!-- Mockup of the UI -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;width:100%;max-width:380px">
+          <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.78rem;color:var(--text-dim)">
+            <div style="color:var(--accent);font-weight:600;margin-bottom:4px">📊 Portfolio Overview</div>
+            <div style="display:flex;gap:16px">
+              <span>Total Value <span class="green">+2.4%</span></span>
+              <span>Day P&L <span class="green">+$142</span></span>
+            </div>
+            <div style="margin-top:8px;background:linear-gradient(to right,var(--accent2),var(--teal));height:4px;border-radius:2px;width:70%"></div>
+          </div>
+          <div style="font-size:.78rem;color:var(--text-dim);margin-bottom:8px">
+            <div style="background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:6px">
+              <span style="color:var(--text-dim)">You:</span> <em>What is dollar cost averaging?</em>
+            </div>
+            <div style="background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:10px 14px">
+              <div style="color:var(--accent);font-size:.7rem;margin-bottom:4px">💰 Finance Q&amp;A Agent</div>
+              Dollar cost averaging (DCA) is an investment strategy where you invest a fixed amount at regular intervals regardless of price, reducing the impact of volatility…
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.75rem;color:var(--text-dim)">Ask a question…</div>
+            <div style="background:var(--accent);border-radius:8px;padding:8px 12px;font-size:.75rem;color:white">Send</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 8 – API REFERENCE                                            -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">08</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">FastAPI Backend &amp; REST API</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>Endpoints</h3>
+          <div style="font-size:.85rem;display:flex;flex-direction:column;gap:8px;margin-top:6px">
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
+              <code>/health</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— liveness probe</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(88,166,255,.15);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">POST</span>
+              <code>/ask</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— main chat endpoint</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
+              <code>/agents</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— registered agent list</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:baseline">
+              <span style="background:rgba(63,185,80,.15);color:var(--accent2);padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700">GET</span>
+              <code>/docs</code>
+              <span style="color:var(--text-dim);font-size:.8rem">— Swagger UI (auto-generated)</span>
+            </div>
+          </div>
+        </div>
+        <div class="card gold-left">
+          <h3 style="color:var(--gold)">Request / Response</h3>
+          <pre style="font-size:.76rem"><code><span class="cm">## Request</span>
+POST /ask
+{
+  <span class="str">"question"</span>: <span class="str">"Who is the current Fed chair?"</span>
+}
+
+<span class="cm">## Response</span>
+{
+  <span class="str">"question"</span>: <span class="str">"Who is the current Fed chair?"</span>,
+  <span class="str">"answer"</span>:   <span class="str">"Jerome Powell is the Chair..."</span>,
+  <span class="str">"agent"</span>:    <span class="str">"finance_qa_agent"</span>
+}</code></pre>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card purple-left">
+          <h3 style="color:var(--purple)">Pydantic Type Safety</h3>
+          <pre style="font-size:.76rem"><code><span class="cm"># protocol.py</span>
+<span class="kw">class</span> <span class="fn">AgentInput</span>(BaseModel):
+    question:  str
+    context:   Optional[str] = None
+    metadata:  Dict[str, Any] = {}
+
+<span class="kw">class</span> <span class="fn">AgentOutput</span>(BaseModel):
+    answer:    str
+    agent:     str
+    status:    AgentStatus
+    metadata:  Dict[str, Any] = {}</code></pre>
+        </div>
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">CORS &amp; Auto-Docs</h3>
+          <p>Full CORS support for the React frontend. FastAPI automatically generates Swagger UI at <code>/docs</code> and ReDoc at <code>/redoc</code> — zero extra config.</p>
+        </div>
+        <div class="card teal-left">
+          <h3 style="color:var(--teal)">Async All the Way</h3>
+          <p>All FastAPI endpoints and agent calls are <code>async</code>, enabling high-concurrency with no blocking I/O — critical for production AI workloads.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 9 – LANGGRAPH ORCHESTRATION                                  -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">09</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">LangGraph Orchestration</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>StateGraph Workflow</h3>
+          <p>Uses LangGraph's <code>StateGraph</code> — a directed acyclic graph of nodes and conditional edges. State flows immutably and each node can read/write a typed <code>WorkflowState</code>.</p>
+          <pre style="margin-top:10px;font-size:.76rem"><code><span class="cm"># orchestrator.py</span>
+graph = <span class="fn">StateGraph</span>(WorkflowState)
+graph.<span class="fn">add_node</span>(<span class="str">"router"</span>,        route_node)
+graph.<span class="fn">add_node</span>(<span class="str">"execute_agent"</span>, execute_node)
+graph.<span class="fn">add_node</span>(<span class="str">"finalize"</span>,      finalize_node)
+graph.<span class="fn">add_edge</span>(<span class="str">"router"</span>, <span class="str">"execute_agent"</span>)
+graph.<span class="fn">add_edge</span>(<span class="str">"execute_agent"</span>, <span class="str">"finalize"</span>)
+graph.<span class="fn">add_edge</span>(<span class="str">"finalize"</span>, END)</code></pre>
+        </div>
+        <div class="card purple-left">
+          <h3 style="color:var(--purple)">WorkflowState</h3>
+          <pre style="font-size:.76rem"><code><span class="kw">class</span> <span class="fn">WorkflowState</span>(TypedDict):
+    question:      str
+    routed_agent:  Optional[str]
+    agent_output:  Optional[AgentOutput]
+    messages:      List[AgentMessage]
+    status:        AgentStatus
+    metadata:      Dict[str, Any]</code></pre>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Why LangGraph?</h3>
+          <ul class="bullets">
+            <li>Declarative graph definition — easy to add new nodes or edges</li>
+            <li>Built-in state management — no manual state passing</li>
+            <li>Conditional edges support complex branching workflows</li>
+            <li>Native LangSmith integration for tracing every run</li>
+            <li>Supports streaming outputs and human-in-the-loop pauses</li>
+          </ul>
+        </div>
+        <div class="card gold-left">
+          <h3 style="color:var(--gold)">Multi-Agent Ready</h3>
+          <p>The orchestrator can be extended to support <span class="highlight">parallel agent execution</span>, <span class="green">agent collaboration</span>, and <span class="purple">iterative refinement loops</span> — just add nodes and conditional edges to the graph.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 10 – TECH STACK                                              -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">10</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Technology Stack</h2>
+    </div>
+
+    <div class="stack-grid">
+      <div class="stack-item">
+        <div class="logo">🧠</div>
+        <div class="name">GPT-4.1</div>
+        <div class="role">LLM — OpenAI</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🔗</div>
+        <div class="name">LangGraph</div>
+        <div class="role">Agent Orchestration</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">⚡</div>
+        <div class="name">FastAPI</div>
+        <div class="role">Async REST Backend</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">⚛️</div>
+        <div class="name">React 18</div>
+        <div class="role">Frontend UI</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🌲</div>
+        <div class="name">Pinecone</div>
+        <div class="role">Vector DB / RAG</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🔍</div>
+        <div class="name">Tavily</div>
+        <div class="role">Real-Time Web Search</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🔭</div>
+        <div class="name">LangSmith</div>
+        <div class="role">Tracing &amp; Observability</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">📦</div>
+        <div class="name">Pydantic v2</div>
+        <div class="role">Data Validation</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🔷</div>
+        <div class="name">TypeScript</div>
+        <div class="role">Type-Safe Frontend</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">⚡</div>
+        <div class="name">Vite</div>
+        <div class="role">Frontend Bundler</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🐍</div>
+        <div class="name">Python 3.11+</div>
+        <div class="role">Backend Runtime</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🧪</div>
+        <div class="name">Pytest</div>
+        <div class="role">Testing Framework</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 11 – TESTING                                                 -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">11</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Testing Strategy</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>Test Coverage</h3>
+          <ul class="bullets">
+            <li><code>test_finance_agent.py</code> — Finance Q&amp;A edge cases</li>
+            <li><code>test_portfolio_agent.py</code> — allocation &amp; rebalancing</li>
+            <li><code>test_market_agent.py</code> — trend &amp; sector analysis</li>
+            <li><code>test_goal_agent.py</code> — retirement &amp; savings goals</li>
+            <li><code>test_news_agent.py</code> — news synthesis outputs</li>
+            <li><code>test_tax_agent.py</code> — tax education accuracy</li>
+            <li><code>test_api.py</code> — FastAPI endpoint integration</li>
+            <li><code>test_system.py</code> — end-to-end system tests</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Test Patterns</h3>
+          <pre style="font-size:.78rem"><code><span class="cm"># test_finance_agent.py</span>
+<span class="kw">def</span> <span class="fn">test_basic_question</span>():
+    result = <span class="fn">ask_finance_agent</span>(
+        <span class="str">"What is compound interest?"</span>
+    )
+    <span class="kw">assert</span> <span class="fn">isinstance</span>(result, str)
+    <span class="kw">assert</span> <span class="fn">len</span>(result) > <span class="num">10</span>
+
+<span class="kw">def</span> <span class="fn">test_empty_question_raises</span>():
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(ValueError):
+        <span class="fn">ask_finance_agent</span>(<span class="str">""</span>)</code></pre>
+        </div>
+        <div class="card gold-left">
+          <h3 style="color:var(--gold)">Configuration</h3>
+          <p>All agent behaviour is driven by <code>config.yaml</code> — model choice, temperature, Tavily/Pinecone toggles, LangSmith tracing flag, and per-agent overrides — making test environments easy to isolate.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 12 – DEMO WALKTHROUGH                                        -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">12</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Live Demo Flow</h2>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="card accent-left">
+        <span class="icon">1️⃣</span>
+        <h3>Start the Backend</h3>
+        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Activate environment</span>
+source .venv/bin/activate
+
+<span class="cm"># Start FastAPI server</span>
+uvicorn src.web_app.server:app \
+  --host 0.0.0.0 --port 8000 \
+  --reload</code></pre>
+      </div>
+      <div class="card green-left">
+        <span class="icon">2️⃣</span>
+        <h3 style="color:var(--accent2)">Start the Frontend</h3>
+        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Navigate to frontend</span>
+cd src/web_app/frontend
+
+<span class="cm"># Install &amp; run</span>
+npm install
+npm run dev
+<span class="cm"># → http://localhost:5173</span></code></pre>
+      </div>
+      <div class="card gold-left">
+        <span class="icon">3️⃣</span>
+        <h3 style="color:var(--gold)">Or use curl / Swagger</h3>
+        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Quick API test</span>
+curl -X POST \
+  http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is DCA?"}'
+
+<span class="cm"># Interactive docs</span>
+open http://localhost:8000/docs</code></pre>
+      </div>
+    </div>
+
+    <div class="card purple-left">
+      <h3 style="color:var(--purple)">Demo Queries to Try</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;font-size:.82rem">
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">📋</span> "What taxes do I owe on selling stocks held &lt;1 year?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--teal)">📈</span> "Is the tech sector outperforming the S&amp;P 500 this month?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--gold)">🎯</span> "How much should I save monthly to retire at 55 with $2M?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--pink)">📰</span> "Summarise the latest Fed interest rate decision."</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--accent2)">📊</span> "My portfolio is 80% tech stocks. Is that risky?"</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--accent)">💰</span> "Explain the difference between ETFs and mutual funds."</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 13 – KEY FEATURES SUMMARY                                    -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">13</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Key Features Summary</h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="card accent-left">
+        <span class="icon">🧭</span>
+        <h3>Intelligent Routing</h3>
+        <p>Zero-config keyword scoring dispatches every query to the right domain expert automatically.</p>
+      </div>
+      <div class="card green-left">
+        <span class="icon">⚡</span>
+        <h3 style="color:var(--accent2)">Real-Time Data</h3>
+        <p>Tavily live web search grounds answers in the latest market data, news, and events.</p>
+      </div>
+      <div class="card teal-left">
+        <span class="icon">🌲</span>
+        <h3 style="color:var(--teal)">RAG-Augmented</h3>
+        <p>Pinecone vector search injects domain-specific document context for conceptual questions.</p>
+      </div>
+      <div class="card purple-left">
+        <span class="icon">🔭</span>
+        <h3 style="color:var(--purple)">Full Observability</h3>
+        <p>Every agent call traced in LangSmith — latency, tokens, inputs, outputs, tags, and errors.</p>
+      </div>
+      <div class="card gold-left">
+        <span class="icon">🔗</span>
+        <h3 style="color:var(--gold)">LangGraph Workflow</h3>
+        <p>StateGraph-based orchestration — declarative, extensible, and production-ready.</p>
+      </div>
+      <div class="card warn-left">
+        <span class="icon">🔒</span>
+        <h3 style="color:var(--warn)">Type-Safe Full Stack</h3>
+        <p>Pydantic v2 on the backend + TypeScript on the frontend — end-to-end type safety.</p>
+      </div>
+      <div class="card pink-left">
+        <span class="icon">📦</span>
+        <h3 style="color:var(--pink)">Extensible Architecture</h3>
+        <p>Add a new agent by subclassing <code>BaseAgent</code> — router and orchestrator auto-discover it.</p>
+      </div>
+      <div class="card accent-left">
+        <span class="icon">🧪</span>
+        <h3>Comprehensive Tests</h3>
+        <p>Dedicated test file per agent + API integration tests + system-level end-to-end tests.</p>
+      </div>
+      <div class="card green-left">
+        <span class="icon">⚙️</span>
+        <h3 style="color:var(--accent2)">Config-Driven</h3>
+        <p>Single <code>config.yaml</code> controls model, temperature, RAG, search, and tracing toggles.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 14 – FUTURE WORK                                             -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">14</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">Future Roadmap</h2>
+    </div>
+
+    <div class="grid-2" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <span class="icon">🔄</span>
+          <h3>Parallel Agent Execution</h3>
+          <p>For complex queries, fan out to multiple agents simultaneously and merge results — e.g., a "how should I invest my inheritance?" query triggers both Portfolio and Goal agents in parallel.</p>
+        </div>
+        <div class="card gold-left">
+          <span class="icon">💬</span>
+          <h3 style="color:var(--gold)">Multi-Turn Conversation Memory</h3>
+          <p>Persist conversation history in a vector store. Agents can reference earlier context — "as we discussed earlier, your risk tolerance is moderate…"</p>
+        </div>
+        <div class="card purple-left">
+          <span class="icon">🔐</span>
+          <h3 style="color:var(--purple)">Auth &amp; User Profiles</h3>
+          <p>OAuth2 / JWT authentication with per-user portfolio state, saved goals, and personalised agent memories stored in a user profile database.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card green-left">
+          <span class="icon">📡</span>
+          <h3 style="color:var(--accent2)">Streaming Responses</h3>
+          <p>Stream GPT-4.1 tokens to the frontend in real-time — eliminates perceived latency and creates a more fluid chat experience.</p>
+        </div>
+        <div class="card teal-left">
+          <span class="icon">🌍</span>
+          <h3 style="color:var(--teal)">Expanded RAG Knowledge Base</h3>
+          <p>Ingest SEC filings, Federal Reserve reports, academic research, and regulatory documents into Pinecone to deepen domain knowledge across all agents.</p>
+        </div>
+        <div class="card pink-left">
+          <span class="icon">📊</span>
+          <h3 style="color:var(--pink)">Real Brokerage Integration</h3>
+          <p>Connect to Alpaca, Plaid, or similar APIs so the Portfolio agent can analyse the user's <em>actual</em> holdings rather than hypothetical scenarios.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 15 – THANK YOU                                               -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide" style="justify-content:center;align-items:center;text-align:center">
+    <div>
+      <div style="font-size:4rem;margin-bottom:16px">🚀</div>
+      <h1 style="background:linear-gradient(135deg,var(--accent),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+        Thank You
+      </h1>
+      <p class="subtitle" style="margin-bottom:32px">AI Finance Assistant — Capstone Project</p>
+
+      <div class="grid-3" style="max-width:700px;margin:0 auto 32px;text-align:left">
+        <div class="card accent-left" style="text-align:center">
+          <div style="font-size:1.8rem">📦</div>
+          <div style="font-size:.85rem;color:var(--text-dim);margin-top:6px">FastAPI Backend</div>
+          <div style="font-size:.78rem;color:var(--accent)">:8000/docs</div>
+        </div>
+        <div class="card green-left" style="text-align:center">
+          <div style="font-size:1.8rem">⚛️</div>
+          <div style="font-size:.85rem;color:var(--text-dim);margin-top:6px">React Frontend</div>
+          <div style="font-size:.78rem;color:var(--accent2)">:5173</div>
+        </div>
+        <div class="card purple-left" style="text-align:center">
+          <div style="font-size:1.8rem">🔭</div>
+          <div style="font-size:.85rem;color:var(--text-dim);margin-top:6px">LangSmith Traces</div>
+          <div style="font-size:.78rem;color:var(--purple)">smith.langchain.com</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:28px">
+        <span class="tag">🧠 6 Specialized AI Agents</span>
+        <span class="tag">🌿 Pinecone RAG</span>
+        <span class="tag">🔍 Tavily Search</span>
+        <span class="tag">🔗 LangGraph</span>
+        <span class="tag">🔭 Full Observability</span>
+        <span class="tag">📊 React Dashboard</span>
+      </div>
+
+      <p style="font-size:.9rem;color:var(--text-dim)">Questions?</p>
+    </div>
+  </section>
+
+</div><!-- #deck -->
+
+<!-- ── Navigation ───────────────────────────────────────────────────── -->
+<div id="nav">
+  <button id="btn-prev" title="Previous (←)">&#8592;</button>
+  <div id="slide-dots"></div>
+  <span id="progress-text">1 / 15</span>
+  <button id="btn-next" title="Next (→)">&#8594;</button>
+</div>
+
+<div id="key-hint">← → Space</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let current = 0;
+
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnNext = document.getElementById('btn-next');
+  const dotsContainer = document.getElementById('slide-dots');
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  function updateDots() {
+    Array.from(dotsContainer.children).forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+  }
+
+  function goTo(idx) {
+    if (idx < 0 || idx >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    const prev = current;
+    current = idx;
+    slides[current].classList.add('active');
+    setTimeout(() => slides[prev].classList.remove('exit'), 400);
+
+    progressBar.style.width = ((current + 1) / total * 100) + '%';
+    progressText.textContent = (current + 1) + ' / ' + total;
+    btnPrev.disabled = current === 0;
+    btnNext.disabled = current === total - 1;
+    updateDots();
+  }
+
+  // Init
+  slides[0].classList.add('active');
+  progressBar.style.width = (1 / total * 100) + '%';
+  btnPrev.disabled = true;
+
+  btnPrev.addEventListener('click', () => goTo(current - 1));
+  btnNext.addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(current - 1); }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  // Swipe support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (dx < -50) goTo(current + 1);
+    if (dx >  50) goTo(current - 1);
+  });
+</script>
+</body>
+</html>

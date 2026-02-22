@@ -1,0 +1,38 @@
+# Core AI
+openai>=1.0.0
+
+# Web framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# Configuration & environment
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Testing
+pytest>=8.0.0
+httpx>=0.27.0          # needed by FastAPI TestClient
+
+# ── Real-time web search (Tavily) ─────────────────────────────────────────────
+# Gives all agents live internet access for current affairs, news, prices etc.
+tavily-python>=0.3.0
+
+# ── Vector store / RAG (Pinecone) ─────────────────────────────────────────────
+# Used by Pinecone RAG store to upsert and query document embeddings.
+pinecone>=3.0.0
+
+# ── Observability (LangSmith) ─────────────────────────────────────────────────
+# Traces every agent call when LANGCHAIN_TRACING_V2=true is set in .env
+langsmith>=0.1.0
+
+# Workflow orchestration
+langgraph>=0.1.0
+langchain-core>=0.1.0   # shared primitives used by langgraph
+
+# --- Optional / future modules (commented out until needed) ---
+# langchain>=0.2.0
+# langchain-openai>=0.1.0
+# faiss-cpu>=1.7.4
+# chromadb>=0.4.0
+# pandas>=2.0.0
+# numpy>=1.24.0
