@@ -8,10 +8,11 @@ from fastapi.testclient import TestClient
 @pytest.fixture(scope="module")
 def client():
     """Return a FastAPI TestClient with the orchestrator mocked out."""
-    with patch("src.workflow.orchestrator.process_query") as mock_process:
+    with patch("src.web_app.server.process_query") as mock_process:
         mock_process.return_value = {
             "answer": "Diversification means spreading investments across asset classes.",
             "agent": "finance_qa_agent",
+            "session_id": "test-session-123",
         }
         from src.web_app.server import app
         yield TestClient(app)

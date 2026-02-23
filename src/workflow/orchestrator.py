@@ -477,6 +477,7 @@ def process_query(
     from ..memory.portfolio_store import PortfolioStore
     from ..agents.memory_synthesizer_agent.memory_agent import synthesize_memory
     from ..utils.tracing import log_run
+    from ..core.guards import check_ambiguous_yes_no_guard
 
     sid = session_id or str(uuid.uuid4())
     store = ConversationStore()
@@ -491,6 +492,12 @@ def process_query(
             history = store.get_history(sid, last_n=6)
         except Exception:
             pass  # non-fatal
+
+    # ── Ambiguous yes/no guard (runs before routing) ────────────────────────────
+    guard_response = check_ambiguous_yes_no_guard(question, history)
+    if guard_response is not None:
+        store.save_turn(sid, question, guard_response, "guard")
+        return {"answer": guard_response, "agent": "guard", "session_id": sid}
 
     # ── LLM routing with conversation context ─────────────────────────────────
     agent_name = route_query(question, history=history, use_llm=True)

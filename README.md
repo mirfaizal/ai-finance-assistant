@@ -35,6 +35,7 @@ A **production-ready, truly agentic AI system** for financial education, built w
 | **`MemorySaver` checkpointer** | ❌ None | ✅ Wired with `thread_id=session_id` |
 | **Multi-turn context** | ❌ Each query isolated | ✅ "Does it apply to ETFs?" works |
 | **Stock agent** | ❌ Missing | ✅ ReAct loop with yfinance tools |
+| **Trading agent** | ❌ Missing | ✅ Paper buy/sell ReAct loop with SQLite positions |
 | **Live market data** | ❌ Mock data | ✅ yfinance — no API key needed |
 | **Session management** | ❌ None | ✅ UUID session_id end-to-end |
 
@@ -42,7 +43,7 @@ A **production-ready, truly agentic AI system** for financial education, built w
 
 ## Features
 
-- **7 Specialized AI Agents** — each an expert in a specific financial domain
+- **9 Specialized AI Agents** — each an expert in a specific financial domain
 - **LLM-Based Routing** — GPT-4.1-mini classifies every question and routes to the best agent; falls back to keyword scoring if the LLM call fails
 - **Persistent Conversation Memory** — SQLite WAL database stores every session; history injected into agent prompts for multi-turn awareness
 - **Memory Synthesizer Agent** — GPT-compresses conversation history into a concise summary when turns exceed 5
@@ -89,8 +90,8 @@ Client (React / curl)
 └──────────┬──────────────┘
            │
     ┌──────┴──────────────────────────────────────────┐
-    ▼        ▼         ▼        ▼       ▼     ▼       ▼
-finance_qa  portfolio  market  goals  news  tax    stock
+    ▼        ▼         ▼        ▼       ▼     ▼       ▼        ▼
+finance_qa  portfolio  market  goals  news  tax    stock  trading
   _agent    _analysis  _agent  _agent _agent _agent _agent
     │           │          │                        │
     │     create_react_agent  (ReAct loop)           │
@@ -142,17 +143,19 @@ Session 1, Turn 2:
 
 ## Agents
 
-Seven specialized agents — the LLM router dispatches based on GPT-4.1-mini classification of the question plus conversation history. Keyword scoring acts as fallback.
+Nine specialized agents — the LLM router dispatches based on GPT-4.1-mini classification of the question plus conversation history. Keyword scoring acts as fallback.
 
-| Agent | Module | Triggered by | Tools | ReAct Loop |
-|---|---|---|---|---|
-| **Finance Q&A** | `finance_qa_agent` | "what is", "explain", "ETF", "current", "Fed" | Tavily, Pinecone | — |
-| **Portfolio Analysis** | `portfolio_analysis_agent` | "portfolio", "allocation", "diversif", "holdings" | `PORTFOLIO_TOOLS`, Pinecone | ✅ |
-| **Market Analysis** | `market_analysis_agent` | "market", "index", "sector", "S&P", "today" | `MARKET_TOOLS`, Tavily | ✅ |
-| **Goal Planning** | `goal_planning_agent` | "goal", "retire", "save", "budget", "FIRE" | Pinecone | — |
-| **News Synthesizer** | `news_synthesizer_agent` | "news", "headline", "recent", "earnings" | Tavily (auto) | — |
-| **Tax Education** | `tax_education_agent` | "tax", "capital gains", "IRS", "deduction" | `TAX_TOOLS`, Pinecone | ✅ |
-| **Stock Analyst** | `stock_agent` | "price", "AAPL", "PE ratio", ticker symbols | `STOCK_TOOLS` | ✅ |
+| Agent | Module | Entry function | Triggered by | Tools | ReAct Loop |
+|---|---|---|---|---|---|
+| **Finance Q&A** | `finance_qa_agent` | `ask_finance_agent` | "what is", "explain", "ETF", "current", "Fed" | Tavily, Pinecone | — |
+| **Portfolio Analysis** | `portfolio_analysis_agent` | `analyze_portfolio` | "portfolio", "allocation", "diversif", "holdings" | `PORTFOLIO_TOOLS`, Pinecone | ✅ |
+| **Market Analysis** | `market_analysis_agent` | `analyze_market` | "market", "index", "sector", "S&P", "today" | `MARKET_TOOLS`, Tavily | ✅ |
+| **Goal Planning** | `goal_planning_agent` | `plan_goals` | "goal", "retire", "save", "budget", "FIRE" | Pinecone | — |
+| **News Synthesizer** | `news_synthesizer_agent` | `synthesize_news` | "news", "headline", "recent", "earnings" | Tavily (auto) | — |
+| **Tax Education** | `tax_education_agent` | `explain_tax_concepts` | "tax", "capital gains", "IRS", "deduction" | `TAX_TOOLS`, Pinecone | ✅ |
+| **Stock Analyst** | `stock_agent` | `ask_stock_agent` | "price", "AAPL", "PE ratio", ticker symbols | `STOCK_TOOLS` | ✅ |
+| **Trading Agent** | `trading_agent` | `ask_trading_agent` | "buy", "sell", "trade", "paper trading", "position" | `TRADING_TOOLS` (SQLite) | ✅ |
+| **Memory Synthesizer** | `memory_synthesizer_agent` | `synthesize_memory` | Internal — triggered when turns > 5 | GPT compressor | — |
 
 ### Stock Agent — `create_react_agent` ReAct Loop
 
@@ -540,20 +543,22 @@ ai_finance_assistant/
 │   │   ├── goal_planning_agent/       ← Goal setting & budgeting       [RAG]
 │   │   ├── news_synthesizer_agent/    ← Financial news synthesis       [Tavily auto-fetch]
 │   │   ├── tax_education_agent/       ← Tax concepts education         [TAX_TOOLS ReAct + RAG]
-│   │   ├── stock_agent/               ← NEW: Stock lookups & analysis  [STOCK_TOOLS ReAct]
-│   │   └── memory_synthesizer_agent/  ← NEW: GPT history compressor
+│   │   ├── stock_agent/               ← Stock lookups & analysis       [STOCK_TOOLS ReAct]
+│   │   ├── trading_agent/             ← Paper buy/sell/positions        [TRADING_TOOLS ReAct]
+│   │   └── memory_synthesizer_agent/  ← GPT history compressor          (auto @ turn > 5)
 │   ├── core/
 │   │   ├── base_agent.py              ← Abstract base class
 │   │   ├── protocol.py                ← WorkflowState with history + summary
 │   │   └── router.py                  ← LLM routing (GPT-4.1-mini) + keyword fallback
-│   ├── memory/                        ← NEW: Persistent conversation memory
+│   ├── memory/                        ← Persistent conversation memory
 │   │   └── conversation_store.py      ← SQLite WAL — sessions + messages + summaries
 │   ├── tools/
-│   │   ├── stock_tools.py             ← NEW: @tool yfinance stock wrappers
-│   │   ├── portfolio_tools.py         ← NEW: @tool portfolio analysis
-│   │   ├── market_tools.py            ← NEW: @tool market overview/sectors
-│   │   ├── tax_tools.py               ← NEW: @tool capital gains + tax loss
-│   │   ├── news_tools.py              ← NEW: @tool yfinance news feed
+│   │   ├── stock_tools.py             ← @tool yfinance stock wrappers → STOCK_TOOLS
+│   │   ├── portfolio_tools.py         ← @tool portfolio P&L + performance → PORTFOLIO_TOOLS
+│   │   ├── market_tools.py            ← @tool market overview + sectors → MARKET_TOOLS
+│   │   ├── tax_tools.py               ← @tool capital gains + tax-loss harvest → TAX_TOOLS
+│   │   ├── news_tools.py              ← @tool yfinance news feed
+│   │   ├── trading_tools.py           ← @tool paper buy/sell/positions → TRADING_TOOLS
 │   │   └── web_search.py              ← Tavily real-time search
 │   ├── workflow/
 │   │   └── orchestrator.py            ← StateGraph + MemorySaver(thread_id=session_id)
@@ -627,11 +632,17 @@ ai_finance_assistant/
        return create_react_agent(llm, tools=MY_TOOLS, prompt=SYSTEM_PROMPT)
    ```
 
-4. **Register** in `src/core/router.py` — add an entry to `AGENT_DESCRIPTIONS` for LLM routing and `ROUTING_TABLE` for keyword fallback.
+4. **Export** from `src/agents/__init__.py`:
+   ```python
+   from .my_new_agent.my_agent import ask_my_agent
+   # Add "ask_my_agent" to __all__
+   ```
 
-5. **Wire** in `src/workflow/orchestrator.py` — add a dispatch branch in `process_query()`.
+5. **Register** in `src/core/router.py` — add an entry to `AGENT_DESCRIPTIONS` for LLM routing and `ROUTING_TABLE` for keyword fallback.
 
-6. **Write tests** in `tests/test_my_agent.py`.
+6. **Wire** in `src/workflow/orchestrator.py` — add a dispatch branch in `process_query()`.
+
+7. **Write tests** in `tests/test_my_agent.py`.
 
 ---
 

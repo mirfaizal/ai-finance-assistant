@@ -47,6 +47,7 @@ class FinanceAssistant:
         """
         self.config = config or {}
         setup_logging(level=logging.INFO)
+        self.logger = logging.getLogger("finance_assistant")
         
         # Initialize router
         self.router = RouterAgent()
@@ -61,7 +62,6 @@ class FinanceAssistant:
             config=self.config
         )
         
-        self.logger = logging.getLogger("finance_assistant")
         self.logger.info("AI Finance Assistant initialized successfully")
     
     def _initialize_agents(self) -> list[BaseAgent]:

@@ -4,7 +4,7 @@ import {
     ResponsiveContainer, Legend,
 } from 'recharts';
 
-const BASE_URL = 'http://localhost:8000';
+import { BASE_URL } from '../lib/config';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface ChartPoint {
@@ -15,11 +15,11 @@ interface ChartPoint {
 }
 
 export function MarketChart() {
-    const [data, setData]       = useState<ChartPoint[]>([]);
+    const [data, setData] = useState<ChartPoint[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError]     = useState(false);
-    const cachedAt              = useRef<number>(0);
-    const cachedData            = useRef<ChartPoint[]>([]);
+    const [error, setError] = useState(false);
+    const cachedAt = useRef<number>(0);
+    const cachedData = useRef<ChartPoint[]>([]);
 
     useEffect(() => {
         let cancelled = false;
@@ -37,7 +37,7 @@ export function MarketChart() {
                 const json: ChartPoint[] = await res.json();
                 if (!cancelled) {
                     cachedData.current = json;
-                    cachedAt.current   = Date.now();
+                    cachedAt.current = Date.now();
                     setData(json);
                     setError(false);
                 }
@@ -76,9 +76,9 @@ export function MarketChart() {
                             formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(0)}`, '']}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <Line type="monotone" dataKey="sp500"  stroke="#14b8a6" strokeWidth={2} dot={false} name="S&P 500" />
+                        <Line type="monotone" dataKey="sp500" stroke="#14b8a6" strokeWidth={2} dot={false} name="S&P 500" />
                         <Line type="monotone" dataKey="nasdaq" stroke="#8b5cf6" strokeWidth={2} dot={false} name="NASDAQ" />
-                        <Line type="monotone" dataKey="dow"    stroke="#3b82f6" strokeWidth={1.5} dot={false} name="DOW" />
+                        <Line type="monotone" dataKey="dow" stroke="#3b82f6" strokeWidth={1.5} dot={false} name="DOW" />
                     </LineChart>
                 </ResponsiveContainer>
             )}

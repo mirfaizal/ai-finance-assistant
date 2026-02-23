@@ -50,6 +50,7 @@ import { MessageBubble } from './MessageBubble';
 import { AgentBadge } from './AgentBadge';
 import { detectAgent, getAgent, backendAgentToType } from '../lib/agentEngine';
 import { askQuestion, getPortfolioHoldings } from '../lib/api';
+import { BASE_URL } from '../lib/config';
 import { appendMessage, getSession, getBackendSessionId, setBackendSessionId } from '../lib/storage';
 import { saveHoldings } from '../lib/holdingsStore';
 import type { Message, AgentType } from '../lib/types';
@@ -95,7 +96,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
 
     // Check backend health on mount
     useEffect(() => {
-        fetch('http://localhost:8000/health')
+        fetch(`${BASE_URL}/health`)
             .then((r) => setBackendOnline(r.ok))
             .catch(() => setBackendOnline(false));
     }, []);
@@ -137,8 +138,8 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
                     if (ph.holdings.length > 0) {
                         saveHoldings(
                             ph.holdings.map((h) => ({
-                                ticker:   h.ticker,
-                                shares:   h.shares,
+                                ticker: h.ticker,
+                                shares: h.shares,
                                 avg_cost: h.avg_cost,
                             })),
                         );
