@@ -3,15 +3,15 @@ import { MarketChart } from './MarketChart';
 import { PortfolioChart } from './PortfolioChart';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const BASE_URL    = 'http://localhost:8000';
-const CACHE_TTL   = 5 * 60 * 1000;
+import { BASE_URL } from '../lib/config';
+const CACHE_TTL = 5 * 60 * 1000;
 const DEFAULT_SYMBOLS = 'SPY,AAPL,TSLA,NVDA,BTC-USD';
 
 interface TickerData {
-    symbol:     string;
-    price:      number | null;
+    symbol: string;
+    price: number | null;
     change_pct: number | null;
-    up:         boolean | null;
+    up: boolean | null;
 }
 
 export function RightSidebar() {
@@ -34,9 +34,9 @@ export function RightSidebar() {
                     setTickers(
                         Object.entries(json).map(([symbol, d]) => ({
                             symbol,
-                            price:      d.price,
+                            price: d.price,
                             change_pct: d.change_pct,
-                            up:         d.up,
+                            up: d.up,
                         })),
                     );
                 }
@@ -52,30 +52,30 @@ export function RightSidebar() {
             <div className="ticker-strip">
                 {tickers.length === 0
                     ? // Skeleton
-                      [1, 2, 3, 4, 5].map((i) => (
-                          <div key={i} className="ticker-item" style={{ opacity: 0.3 }}>
-                              <span className="ticker-symbol">···</span>
-                          </div>
-                      ))
+                    [1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="ticker-item" style={{ opacity: 0.3 }}>
+                            <span className="ticker-symbol">···</span>
+                        </div>
+                    ))
                     : tickers.map((t) => (
-                          <div key={t.symbol} className="ticker-item">
-                              <span className="ticker-symbol">{t.symbol.replace('-USD', '')}</span>
-                              <span className="ticker-price">
-                                  {t.price != null
-                                      ? t.price >= 1000
-                                          ? t.price.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                          : t.price.toFixed(2)
-                                      : '—'}
-                              </span>
-                              {t.change_pct != null && (
-                                  <span className={`ticker-change ${t.up ? 'up' : 'down'}`}>
-                                      {t.up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                                      {t.up ? '+' : ''}
-                                      {t.change_pct.toFixed(2)}%
-                                  </span>
-                              )}
-                          </div>
-                      ))}
+                        <div key={t.symbol} className="ticker-item">
+                            <span className="ticker-symbol">{t.symbol.replace('-USD', '')}</span>
+                            <span className="ticker-price">
+                                {t.price != null
+                                    ? t.price >= 1000
+                                        ? t.price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                        : t.price.toFixed(2)
+                                    : '—'}
+                            </span>
+                            {t.change_pct != null && (
+                                <span className={`ticker-change ${t.up ? 'up' : 'down'}`}>
+                                    {t.up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                                    {t.up ? '+' : ''}
+                                    {t.change_pct.toFixed(2)}%
+                                </span>
+                            )}
+                        </div>
+                    ))}
             </div>
 
             <MarketChart />

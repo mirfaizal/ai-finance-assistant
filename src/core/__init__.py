@@ -12,6 +12,11 @@ from .protocol import (
     AgentMetadata,
     AgentCapability
 )
+from .guards import (
+    wasLastMessageYesNoQuestion,
+    isAmbiguousYesNo,
+    check_ambiguous_yes_no_guard,
+)
 
 __all__ = [
     "BaseAgent",
@@ -23,5 +28,9 @@ __all__ = [
     "MessageType",
     "WorkflowState",
     "AgentMetadata",
-    "AgentCapability"
+    "AgentCapability",
+    # Guards / interceptors
+    "wasLastMessageYesNoQuestion",
+    "isAmbiguousYesNo",
+    "check_ambiguous_yes_no_guard",
 ]

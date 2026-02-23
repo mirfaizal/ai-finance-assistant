@@ -1,0 +1,61 @@
+# AI Finance Assistant – Docker Compose
+# Usage:
+#   cp .env.example .env  # then fill in your API keys
+#   docker-compose up --build -d
+#   open http://localhost:3000
+
+services:
+
+  # ── Python / FastAPI backend ───────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    image: ai-finance-backend:latest
+    container_name: ai-finance-backend
+    restart: unless-stopped
+    env_file: .env # loads OPENAI_API_KEY etc.
+    environment:
+      # Override config.yaml server settings if needed
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - db_data:/app/data # SQLite persistence
+    ports:
+      - "8000:8000" # direct backend access (dev / curl)
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    networks:
+      - app-net
+
+  # ── React / Vite frontend served by Nginx ──────────────────────────────────
+  frontend:
+    build:
+      context: ./src/web_app/frontend
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: "" # empty = use nginx /api proxy
+    image: ai-finance-frontend:latest
+    container_name: ai-finance-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80" # http://localhost:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-net
+
+# ── Named volume for SQLite DB ────────────────────────────────────────────────
+volumes:
+  db_data:
+    driver: local
+
+# ── Internal network ──────────────────────────────────────────────────────────
+networks:
+  app-net:
+    driver: bridge

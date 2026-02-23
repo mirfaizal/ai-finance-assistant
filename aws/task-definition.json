@@ -1,0 +1,103 @@
+{
+  "family": "ai-finance-assistant",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn":      "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskRole",
+
+  "volumes": [],
+
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/ai-finance-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:ai-finance/openai-api-key"
+        },
+        {
+          "name": "TAVILY_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:ai-finance/tavily-api-key"
+        },
+        {
+          "name": "PINECONE_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:ai-finance/pinecone-api-key"
+        }
+      ],
+      "environment": [
+        { "name": "PINECONE_INDEX",          "value": "ai-finance-rag" },
+        { "name": "LANGCHAIN_TRACING_V2",    "value": "false" },
+        { "name": "LANGCHAIN_PROJECT",       "value": "ai-finance-assistant" },
+        { "name": "PYTHONUNBUFFERED",        "value": "1" }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "db-data",
+          "containerPath": "/app/data",
+          "readOnly": false
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/ai-finance-backend",
+          "awslogs-region":        "<REGION>",
+          "awslogs-stream-prefix": "backend"
+        }
+      },
+      "healthCheck": {
+        "command":     ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval":    30,
+        "timeout":     10,
+        "retries":     3,
+        "startPeriod": 20
+      }
+    },
+    {
+      "name": "frontend",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/ai-finance-frontend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "dependsOn": [
+        {
+          "containerName": "backend",
+          "condition": "HEALTHY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/ai-finance-frontend",
+          "awslogs-region":        "<REGION>",
+          "awslogs-stream-prefix": "frontend"
+        }
+      }
+    }
+  ],
+
+  "volumes": [
+    {
+      "name": "db-data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "<EFS_FILESYSTEM_ID>",
+        "rootDirectory": "/ai-finance/data",
+        "transitEncryption": "ENABLED"
+      }
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import { Edit2 } from 'lucide-react';
 import { getHoldings, type Holding } from '../lib/holdingsStore';
 import { PortfolioInput } from './PortfolioInput';
 
-const BASE_URL   = 'http://localhost:8000';
+import { BASE_URL } from '../lib/config';
 const PIE_COLORS = [
     '#14b8a6', '#8b5cf6', '#3b82f6', '#f59e0b',
     '#10b981', '#ec4899', '#f97316', '#6b7280',
@@ -23,8 +23,8 @@ interface Summary {
 export function PortfolioChart() {
     const [holdings, setHoldings] = useState<Holding[]>(getHoldings);
     const [segments, setSegments] = useState<PieSegment[]>([]);
-    const [summary,  setSummary]  = useState<Summary | null>(null);
-    const [loading,  setLoading]  = useState(false);
+    const [summary, setSummary] = useState<Summary | null>(null);
+    const [loading, setLoading] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
 
     // Re-read localStorage whenever the trading agent saves new holdings
@@ -39,15 +39,15 @@ export function PortfolioChart() {
         setLoading(true);
         try {
             const res = await fetch(`${BASE_URL}/portfolio/analyze`, {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ holdings: hs }),
+                body: JSON.stringify({ holdings: hs }),
             });
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             const segs: PieSegment[] = (data.holdings ?? []).map(
                 (h: { ticker: string; allocation_pct: number }, i: number) => ({
-                    name:  h.ticker,
+                    name: h.ticker,
                     value: h.allocation_pct,
                     color: PIE_COLORS[i % PIE_COLORS.length],
                 }),

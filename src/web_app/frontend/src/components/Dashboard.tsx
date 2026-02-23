@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { MessageSquare, BookOpen, ArrowRight } from 'lucide-react';
 import { QUICK_ACTIONS, EDUCATIONAL_CARDS } from '../lib/mockData';
 
-const BASE_URL  = 'http://localhost:8000';
+import { BASE_URL } from '../lib/config';
 const CACHE_TTL = 5 * 60 * 1000;
 
 interface Insight {
@@ -17,15 +17,15 @@ interface Insight {
 
 // Fallback shown while loading or if backend is offline
 const FALLBACK_INSIGHTS: Insight[] = [
-    { id: 1, icon: '📈', title: 'S&P 500',          desc: 'Loading live data…',                       badge: 'Markets',  badgeColor: '#8b5cf6' },
-    { id: 2, icon: '📊', title: 'Nasdaq 100',        desc: 'Loading live data…',                       badge: 'Markets',  badgeColor: '#14b8a6' },
-    { id: 3, icon: '⚡', title: 'Volatility (VIX)',  desc: 'The VIX fear index measures market risk.', badge: 'Risk',     badgeColor: '#f59e0b' },
+    { id: 1, icon: '📈', title: 'S&P 500', desc: 'Loading live data…', badge: 'Markets', badgeColor: '#8b5cf6' },
+    { id: 2, icon: '📊', title: 'Nasdaq 100', desc: 'Loading live data…', badge: 'Markets', badgeColor: '#14b8a6' },
+    { id: 3, icon: '⚡', title: 'Volatility (VIX)', desc: 'The VIX fear index measures market risk.', badge: 'Risk', badgeColor: '#f59e0b' },
 ];
 
 function buildInsights(overview: Record<string, { price: number | null; change_pct: number | null }>): Insight[] {
-    const fmt    = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
-    const fmtPx  = (v: number | null) => v != null ? `$${v.toFixed(2)}` : '—';
-    const color  = (v: number | null) => v != null && v >= 0 ? '#10b981' : '#ef4444';
+    const fmt = (v: number | null) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—';
+    const fmtPx = (v: number | null) => v != null ? `$${v.toFixed(2)}` : '—';
+    const color = (v: number | null) => v != null && v >= 0 ? '#10b981' : '#ef4444';
 
     const spy = overview['SPY'];
     const qqq = overview['QQQ'];
@@ -36,7 +36,7 @@ function buildInsights(overview: Record<string, { price: number | null; change_p
             id: 1,
             icon: spy?.change_pct != null && spy.change_pct >= 0 ? '📈' : '📉',
             title: `S&P 500  ${fmtPx(spy?.price ?? null)}`,
-            desc:  `Day change: ${fmt(spy?.change_pct ?? null)}`,
+            desc: `Day change: ${fmt(spy?.change_pct ?? null)}`,
             badge: 'Markets',
             badgeColor: color(spy?.change_pct ?? null),
         },
@@ -44,7 +44,7 @@ function buildInsights(overview: Record<string, { price: number | null; change_p
             id: 2,
             icon: qqq?.change_pct != null && qqq.change_pct >= 0 ? '🚀' : '📉',
             title: `Nasdaq 100  ${fmtPx(qqq?.price ?? null)}`,
-            desc:  `Day change: ${fmt(qqq?.change_pct ?? null)}`,
+            desc: `Day change: ${fmt(qqq?.change_pct ?? null)}`,
             badge: 'Tech',
             badgeColor: '#14b8a6',
         },
@@ -52,10 +52,10 @@ function buildInsights(overview: Record<string, { price: number | null; change_p
             id: 3,
             icon: '⚡',
             title: `VIX  ${vix?.price != null ? vix.price.toFixed(2) : '—'}`,
-            desc:  vix?.price != null
-                ? vix.price < 20  ? 'Low volatility — markets are calm.'
-                : vix.price < 30  ? 'Moderate volatility — some uncertainty.'
-                                  : 'High volatility — elevated market fear.'
+            desc: vix?.price != null
+                ? vix.price < 20 ? 'Low volatility — markets are calm.'
+                    : vix.price < 30 ? 'Moderate volatility — some uncertainty.'
+                        : 'High volatility — elevated market fear.'
                 : 'Fear index data loading…',
             badge: 'Risk',
             badgeColor: vix?.price != null && vix.price > 25 ? '#f59e0b' : '#6b7280',
