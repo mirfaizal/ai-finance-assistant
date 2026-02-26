@@ -52,6 +52,31 @@ services:
     networks:
       - app-net
 
+  # ── MCP Server (SSE/HTTP — for Claude Desktop) ─────────────────────────────
+  # Claude Desktop config: { "url": "http://localhost:8001/sse" }
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend # reuses the same Python image
+    image: ai-finance-backend:latest
+    container_name: ai-finance-mcp
+    restart: unless-stopped
+    env_file: .env # OPENAI_API_KEY, TAVILY_API_KEY, etc.
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    command: [ "python", "src/mcp_server/server.py" ]
+    volumes:
+      - db_data:/app/data # shared SQLite — same session history as backend
+    ports:
+      - "8001:8001" # Claude Desktop → http://localhost:8001/sse
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-net
+
 # ── Named volume for SQLite DB ────────────────────────────────────────────────
 volumes:
   db_data:

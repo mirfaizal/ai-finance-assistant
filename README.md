@@ -13,13 +13,14 @@ A **production-ready, truly agentic AI system** for financial education, built w
 3. [Architecture](#architecture)
 4. [Agents](#agents)
 5. [Tools & Services](#tools--services)
-6. [API Reference](#api-reference)
-7. [Frontend](#frontend)
-8. [Configuration](#configuration)
-9. [Running Tests](#running-tests)
-10. [Project Structure](#project-structure)
-11. [Adding a New Agent](#adding-a-new-agent)
-12. [Safety Disclaimers](#safety-disclaimers)
+6. [MCP Server — Claude Desktop Integration](#mcp-server--claude-desktop-integration)
+7. [API Reference](#api-reference)
+8. [Frontend](#frontend)
+9. [Configuration](#configuration)
+10. [Running Tests](#running-tests)
+11. [Project Structure](#project-structure)
+12. [Adding a New Agent](#adding-a-new-agent)
+13. [Safety Disclaimers](#safety-disclaimers)
 
 ---
 
@@ -47,14 +48,18 @@ A **production-ready, truly agentic AI system** for financial education, built w
 - **LLM-Based Routing** — GPT-4.1-mini classifies every question and routes to the best agent; falls back to keyword scoring if the LLM call fails
 - **Persistent Conversation Memory** — SQLite WAL database stores every session; history injected into agent prompts for multi-turn awareness
 - **Memory Synthesizer Agent** — GPT-compresses conversation history into a concise summary when turns exceed 5
-- **`create_react_agent` ReAct Loop** — Stock, Portfolio, Market, and Tax agents call `@tool`-decorated yfinance functions iteratively until they have enough data to answer
+- **`create_react_agent` ReAct Loop** — Stock, Portfolio, Market, Tax, and Trading agents call `@tool`-decorated yfinance functions iteratively until they have enough data to answer
 - **`MemorySaver` LangGraph Checkpointer** — in-session state persisted automatically per `thread_id=session_id`
 - **Live yfinance Data** — real stock prices, market overview, 12-month chart, portfolio P&L — no API key
 - **Tavily Real-Time Web Search** — news and web context for Finance Q&A and News agents
 - **Pinecone RAG** — domain knowledge retrieved and injected for conceptual questions
+- **Paper Trading** — buy/sell stocks with live prices; positions and trade history stored in SQLite WAL
+- **MCP Server** — 6 tools exposed via `fastmcp` for Claude Desktop integration (bonus feature)
 - **LangSmith Observability** — every ReAct tool call, routing decision, and agent run traced
-- **FastAPI Backend** — 9 async REST endpoints with Pydantic validation
+- **FastAPI Backend** — 17+ async REST endpoints with Pydantic validation
 - **React + TypeScript Frontend** — live dashboard: market chart, portfolio pie, ticker strip, agent chat
+- **Docker** — `Dockerfile.backend` + `docker-compose.yml` for one-command local deployment
+- **388 Tests** — 24 test modules across agents, tools, orchestrator, memory stores, API, and MCP server
 
 ---
 
@@ -296,6 +301,90 @@ LANGCHAIN_PROJECT=ai-finance-assistant
 ```
 
 The ReAct tool loop produces especially rich traces — each `tool_call → tool_result → final_answer` cycle is a separate child span.
+
+---
+
+### MCP Server — Claude Desktop Integration (`src/mcp_server/`)
+
+The system ships a **Model Context Protocol (MCP) server** that exposes finance tools directly to Claude Desktop, Cursor, and any other MCP-compatible client. Claude can call these tools natively mid-conversation without leaving the chat interface.
+
+#### Tools exposed
+
+| MCP Tool | Description |
+|---|---|
+| `ask_finance_assistant` | Full multi-agent Q&A (routes to best specialist agent) |
+| `get_stock_quote` | Live price, P/E, 52-week range, volume for any ticker |
+| `get_market_overview` | Real-time SPY/QQQ/VIX/GLD/USO snapshot |
+| `analyze_portfolio` | P&L, allocation %, concentration risk from a holdings list |
+| `get_financial_news` | Latest market headlines via yfinance |
+| `get_sector_performance` | All 11 S&P 500 sectors sorted by return % |
+
+#### Quick start
+
+```bash
+# Install fastmcp
+pip install fastmcp
+
+# Run locally (stdio — MCP Inspector in browser)
+fastmcp dev src/mcp_server/server.py
+# -> opens http://127.0.0.1:6274
+
+# Run locally (direct stdio)
+python src/mcp_server/server.py
+
+# Run with Docker (SSE/HTTP — see docker-compose.yml)
+docker-compose up --build -d
+# -> MCP SSE endpoint: http://localhost:8001/sse
+```
+
+#### Option A — Claude Desktop: local Python process (stdio)
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ai-finance-assistant": {
+      "command": "python",
+      "args": ["src/mcp_server/server.py"],
+      "cwd": "/absolute/path/to/ai_finance_assistant",
+      "env": {
+        "OPENAI_API_KEY": "sk-...",
+        "TAVILY_API_KEY": "tvly-..."
+      }
+    }
+  }
+}
+```
+
+#### Option B — Claude Desktop: Docker SSE (recommended after `docker-compose up`)
+
+After running `docker-compose up --build -d`, use the URL-based config — **no local Python needed**:
+
+```json
+{
+  "mcpServers": {
+    "ai-finance-assistant": {
+      "url": "http://localhost:8001/sse"
+    }
+  }
+}
+```
+
+Restart Claude Desktop. You'll see a 🔌 plug icon indicating MCP tools are active.
+
+#### Example Claude Desktop conversation
+
+```
+You: What's NVDA trading at right now?
+Claude: [calls get_stock_quote("NVDA")]
+-> NVDA is trading at $921.59 (+2.14%), P/E 52.1, market cap $2.26T ...
+
+You: Now check my portfolio — I hold 10 AAPL at $150, 5 NVDA at $500
+Claude: [calls analyze_portfolio('[{"ticker":"AAPL","shares":10,"avg_cost":150},
+                                   {"ticker":"NVDA","shares":5,"avg_cost":500}]')]
+-> Total value: $11,847  |  P&L: +$7,097 (+149.2%)  |  Risk: High (NVDA 77.8%)
+```
 
 ---
 

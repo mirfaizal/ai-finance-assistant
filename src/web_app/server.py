@@ -510,6 +510,76 @@ def rag_context(q: str, top_k: int = 3):
     return {"query": q, "context": ctx}
 
 
+# ── Financial Academy course content (RAG-backed) ──────────────────────────────
+
+# Map URL slug → human title and representative search query
+_COURSE_META: dict[str, dict] = {
+    "investing-101":     {"title": "Investing 101",     "query": "investing basics stocks bonds ETF asset allocation"},
+    "tax-strategies":    {"title": "Tax Strategies",    "query": "tax strategies tax-loss harvesting Roth IRA 401k capital gains"},
+    "market-mechanics":  {"title": "Market Mechanics",  "query": "stock exchange market mechanics bid ask limit order IPO"},
+    "crypto-basics":     {"title": "Crypto Basics",     "query": "blockchain cryptocurrency Bitcoin smart contracts DeFi"},
+}
+
+
+@app.get("/academy/courses", summary="List all Financial Academy courses with metadata")
+def list_academy_courses() -> dict:
+    """Return the list of available courses with their slugs and titles."""
+    courses = [
+        {"id": str(i + 1), "slug": slug, "title": meta["title"]}
+        for i, (slug, meta) in enumerate(_COURSE_META.items())
+    ]
+    return {"courses": courses}
+
+
+@app.get("/academy/course/{slug}", summary="Get RAG-retrieved content for a Financial Academy course")
+def get_academy_course(slug: str, top_k: int = 5) -> dict:
+    """
+    Query Pinecone for content relevant to the named course and return it as
+    a list of content blocks for display in the Financial Academy UI.
+
+    Slug must be one of: investing-101 | tax-strategies | market-mechanics | crypto-basics
+    """
+    meta = _COURSE_META.get(slug)
+    if not meta:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown course slug '{slug}'. Valid values: {list(_COURSE_META.keys())}",
+        )
+
+    from src.rag.pinecone_store import query_similar
+
+    # First try: filter by doc slug (exact match for seeded content)
+    matches = query_similar(
+        query_text=meta["query"],
+        top_k=top_k,
+        filter_metadata={"doc": slug},
+    )
+
+    # Fallback: semantic search without metadata filter
+    if not matches:
+        matches = query_similar(query_text=meta["query"], top_k=top_k)
+
+    blocks = []
+    seen_texts: set[str] = set()
+    for m in matches:
+        text = (m.get("text") or "").strip()
+        if not text or text in seen_texts:
+            continue
+        seen_texts.add(text)
+        blocks.append({
+            "text":  text,
+            "score": round(m.get("score", 0.0), 3),
+            "doc":   m.get("metadata", {}).get("doc", slug),
+        })
+
+    return {
+        "slug":    slug,
+        "title":   meta["title"],
+        "blocks":  blocks,
+        "from_rag": len(blocks) > 0,
+    }
+
+
 @app.post("/rag/seed", summary="Seed Pinecone from data/academy (dev only)")
 def rag_seed(request: Request) -> dict:
     """Seed the Pinecone index from bundled data/academy markdown files.
@@ -529,6 +599,132 @@ def rag_seed(request: Request) -> dict:
     except Exception as exc:
         logger.error("RAG seed failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/quiz/seed-pool", summary="Seed pre-written quiz bank into Pinecone quiz-pool namespace")
+def quiz_seed_pool(request: Request) -> dict:
+    """Upsert all questions from the quiz bank into the Pinecone quiz-pool namespace.
+
+    Requires PINECONE_API_KEY and OPENAI_API_KEY.  Protected by RAG_ADMIN_KEY if set.
+    """
+    if RAG_ADMIN_KEY:
+        provided = request.headers.get("x-rag-admin-key") or request.headers.get("X-RAG-ADMIN-KEY")
+        if not provided or provided != RAG_ADMIN_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid admin key")
+    try:
+        from src.rag.seed_pinecone import seed_quiz_pool
+        n = seed_quiz_pool()
+        return {"seeded": n, "namespace": "quiz-pool"}
+    except Exception as exc:
+        logger.error("Quiz pool seed failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/quiz/pool/random", summary="Fetch a random unseen quiz question from the Pinecone quiz pool")
+def quiz_pool_random(
+    request: Request,
+    topic: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> dict:
+    """
+    Return a random unasked multiple-choice question from the pre-seeded quiz pool.
+
+    The question is retrieved from Pinecone's quiz-pool namespace.  If session_id
+    is provided, questions already answered in that session are excluded so the
+    user is always served fresh content.
+
+    topic (optional): filter by topic slug, e.g. 'crypto-basics', 'tax-strategies'.
+    """
+    import random
+    from src.rag.pinecone_store import query_similar
+
+    # Build a varied query so we get a broad set of candidates
+    topics_rotation = [
+        "compound interest investing basics",
+        "tax strategies retirement IRA",
+        "stock market trading mechanics",
+        "cryptocurrency blockchain DeFi",
+        "risk management portfolio diversification",
+    ]
+    search_query = topic if topic else random.choice(topics_rotation)
+
+    filter_meta: dict = {"type": "quiz"}
+    if topic:
+        filter_meta["topic"] = topic
+
+    try:
+        matches = query_similar(
+            query_text=search_query,
+            top_k=20,              # fetch many so we can pick a fresh one
+            namespace="quiz-pool",
+            filter_metadata=filter_meta,
+        )
+    except Exception as exc:
+        logger.error("quiz_pool_random: Pinecone query failed: %s", exc)
+        matches = []
+
+    if not matches:
+        # Fallback: use the LLM-generated quiz if Pinecone quiz pool is empty
+        fallback_topic = topic or "compound interest"
+        ctx = get_rag_context(fallback_topic, top_k=3, agent_filter="finance_qa")
+        prompt = (
+            "You are a finance teacher. Using the context below (or your own knowledge if "
+            "context is empty), generate ONE multiple-choice question (4 options) with a single "
+            "correct answer. Output JSON only: {\"question\": \"...\", \"choices\": [...], "
+            "\"answer_index\": 0-3}.\n\nContext:\n" + ctx
+        )
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            resp = client.chat.completions.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,
+                temperature=0.7,
+            )
+            text = resp.choices[0].message.content
+            import re
+            m = re.search(r"\{.*\}", text, re.S)
+            payload = json.loads(m.group(0) if m else text)
+            qid = str(uuid4())
+            _quiz_store.store_question(qid, int(payload["answer_index"]), session_id)
+            return {"question_id": qid, "question": payload["question"],
+                    "choices": payload["choices"], "source": "llm"}
+        except Exception as llm_exc:
+            logger.error("Fallback LLM quiz generation failed: %s", llm_exc)
+            raise HTTPException(status_code=503, detail="Quiz pool empty and LLM fallback failed") from llm_exc
+
+    # Exclude already-answered question IDs for this session
+    answered_ids: set[str] = set()
+    if session_id:
+        answered_ids = set(_quiz_store.get_answered_pool_ids(session_id))
+
+    fresh = [m for m in matches if m["id"] not in answered_ids]
+    if not fresh:
+        # All seen — reset and serve any question (cyclic)
+        fresh = matches
+
+    chosen = random.choice(fresh)
+    meta = chosen.get("metadata", {})
+
+    try:
+        choices = json.loads(meta.get("choices_json", "[]"))
+    except Exception:
+        choices = []
+
+    answer_index = int(meta.get("answer_index", 0))
+    qid = chosen["id"]
+
+    # Store so /quiz/answer can look up the correct index
+    _quiz_store.store_question(qid, answer_index, session_id)
+
+    return {
+        "question_id": qid,
+        "question":    meta.get("question", chosen.get("text", "")),
+        "choices":     choices,
+        "topic":       meta.get("topic", ""),
+        "source":      "pinecone",
+    }
 
 
 @app.post("/quiz/generate", summary="Generate a multiple-choice quiz question from RAG context")

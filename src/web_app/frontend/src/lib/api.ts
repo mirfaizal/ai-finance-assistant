@@ -143,3 +143,66 @@ export async function getCoinBalance(sessionId: string) {
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
   return res.json();
 }
+
+// ── Quiz Pool (Pinecone-backed, pre-seeded questions) ─────────────────────────
+
+/**
+ * Fetch a random unseen quiz question from the Pinecone quiz-pool.
+ * Pass sessionId so already-answered questions are skipped.
+ * Pass topic to filter by course topic (e.g. 'crypto-basics').
+ */
+export async function getPoolQuiz(
+  sessionId?: string | null,
+  topic?: string | null,
+): Promise<QuizQuestion> {
+  const params = new URLSearchParams();
+  if (sessionId) params.set('session_id', sessionId);
+  if (topic) params.set('topic', topic);
+
+  const res = await fetch(`${BASE_URL}/quiz/pool/random?${params.toString()}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Backend error ${res.status}: ${err}`);
+  }
+  return res.json() as Promise<QuizQuestion>;
+}
+
+// ── Financial Academy course content (RAG-backed) ─────────────────────────────
+
+export interface CourseBlock {
+  text: string;
+  score: number;
+  doc: string;
+}
+
+export interface AcademyCourseResponse {
+  slug: string;
+  title: string;
+  blocks: CourseBlock[];
+  from_rag: boolean;
+}
+
+/**
+ * Fetch RAG-retrieved content blocks for a given course slug.
+ * slug: 'investing-101' | 'tax-strategies' | 'market-mechanics' | 'crypto-basics'
+ */
+export async function getAcademyCourse(slug: string): Promise<AcademyCourseResponse> {
+  const res = await fetch(`${BASE_URL}/academy/course/${encodeURIComponent(slug)}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Backend error ${res.status}: ${err}`);
+  }
+  return res.json() as Promise<AcademyCourseResponse>;
+}
+
+/**
+ * Trigger the Pinecone quiz-pool seed (admin / dev helper).
+ * Requires RAG_ADMIN_KEY header if the server has RAG_ADMIN_KEY env var set.
+ */
+export async function seedQuizPool(adminKey?: string): Promise<{ seeded: number }> {
+  const headers: Record<string, string> = {};
+  if (adminKey) headers['X-RAG-ADMIN-KEY'] = adminKey;
+  const res = await fetch(`${BASE_URL}/quiz/seed-pool`, { method: 'POST', headers });
+  if (!res.ok) throw new Error(`Backend error ${res.status}`);
+  return res.json();
+}

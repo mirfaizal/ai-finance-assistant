@@ -348,12 +348,13 @@
         <span class="logo-badge">🌲 Pinecone RAG</span>
         <span class="logo-badge">🔍 Tavily Search</span>
         <span class="logo-badge">🔭 LangSmith</span>
+        <span class="logo-badge">🔌 MCP Server</span>
       </div>
 
       <div style="margin-top:36px" class="stat-row" style="justify-content:center">
-        <div class="stat"><div class="big-num">7</div><div class="big-label">Specialized Agents</div></div>
-        <div class="stat" style="margin:0 32px"><div class="big-num" style="color:var(--accent2)">9</div><div class="big-label">REST Endpoints</div></div>
-        <div class="stat"><div class="big-num" style="color:var(--gold)">∞</div><div class="big-label">Live yfinance Data</div></div>
+        <div class="stat"><div class="big-num">9</div><div class="big-label">Specialized Agents</div></div>
+        <div class="stat" style="margin:0 32px"><div class="big-num" style="color:var(--accent2)">17</div><div class="big-label">REST Endpoints</div></div>
+        <div class="stat"><div class="big-num" style="color:var(--gold)">388</div><div class="big-label">Tests Passing</div></div>
       </div>
     </div>
 
@@ -483,7 +484,7 @@
     <div class="slide-header">
       <span class="slide-num">04</span>
       <div class="slide-title-line"></div>
-      <h2 style="margin:0">7 Specialized Agents</h2>
+      <h2 style="margin:0">9 Specialized Agents</h2>
     </div>
 
     <div class="two-col">
@@ -541,15 +542,23 @@
         <div class="agent-pill" style="border-color:rgba(249,115,22,.3)">
           <span class="emoji">🔬</span>
           <div class="info">
-            <strong>Stock Analyst Agent <span style="color:var(--warn);font-size:.75rem">NEW</span></strong>
-            <p><code>create_react_agent</code> — calls <code>get_stock_quote</code> → <code>get_stock_financials</code> iteratively. True multi-step tool loop.</p>
+            <strong>Stock Analyst Agent</strong>
+            <p><code>create_react_agent</code> ReAct — calls <code>get_stock_quote</code> → <code>get_stock_financials</code> iteratively. True multi-step tool loop.</p>
             <span class="keywords">STOCK_TOOLS ReAct &nbsp;|&nbsp; price, P/E, AAPL, ticker symbols, compare…</span>
+          </div>
+        </div>
+        <div class="agent-pill" style="border-color:rgba(63,185,80,.3)">
+          <span class="emoji">💹</span>
+          <div class="info">
+            <strong>Trading Agent</strong>
+            <p>Paper buy/sell positions stored in SQLite. ReAct loop calls <code>buy_stock</code>, <code>sell_stock</code>, <code>get_positions</code> tools.</p>
+            <span class="keywords">TRADING_TOOLS ReAct &nbsp;|&nbsp; buy, sell, trade, position, paper…</span>
           </div>
         </div>
         <div class="agent-pill" style="border-color:rgba(188,140,255,.3)">
           <span class="emoji">🧠</span>
           <div class="info">
-            <strong>Memory Synthesizer <span style="color:var(--purple);font-size:.75rem">NEW</span></strong>
+            <strong>Memory Synthesizer</strong>
             <p>GPT-4.1-mini compresses conversation history (&gt;5 turns) into a concise paragraph injected into every subsequent prompt.</p>
             <span class="keywords">Triggered by orchestrator when turn_count ≥ 5</span>
           </div>
@@ -969,7 +978,17 @@ result = self.app.<span class="fn">invoke</span>(
       <div class="stack-item">
         <div class="logo">🧪</div>
         <div class="name">Pytest</div>
-        <div class="role">Testing Framework</div>
+        <div class="role">Testing — 388 ✅</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🔌</div>
+        <div class="name">FastMCP</div>
+        <div class="role">MCP / Claude Desktop</div>
+      </div>
+      <div class="stack-item">
+        <div class="logo">🐳</div>
+        <div class="name">Docker</div>
+        <div class="role">Containerisation</div>
       </div>
     </div>
   </section>
@@ -981,109 +1000,180 @@ result = self.app.<span class="fn">invoke</span>(
     <div class="slide-header">
       <span class="slide-num">11</span>
       <div class="slide-title-line"></div>
-      <h2 style="margin:0">Testing Strategy</h2>
+      <h2 style="margin:0">Testing Strategy — <span class="green">388 Tests Passing</span></h2>
     </div>
 
     <div class="two-col" style="flex:1">
       <div class="col">
         <div class="card accent-left">
-          <h3>Test Coverage</h3>
-          <ul class="bullets">
+          <h3>24 Test Modules</h3>
+          <ul class="bullets" style="font-size:.88rem">
             <li><code>test_finance_agent.py</code> — Finance Q&amp;A edge cases</li>
             <li><code>test_portfolio_agent.py</code> — allocation &amp; rebalancing</li>
             <li><code>test_market_agent.py</code> — trend &amp; sector analysis</li>
             <li><code>test_goal_agent.py</code> — retirement &amp; savings goals</li>
             <li><code>test_news_agent.py</code> — news synthesis outputs</li>
             <li><code>test_tax_agent.py</code> — tax education accuracy</li>
+            <li><code>test_tools_stock.py / market / portfolio / tax / trading / news</code></li>
+            <li><code>test_orchestrator.py</code> — LangGraph StateGraph + routing</li>
+            <li><code>test_memory_stores.py</code> — SQLite WAL CRUD</li>
+            <li><code>test_mcp_server.py</code> — 16 MCP tool tests ✅ <span style="color:var(--accent2)">NEW</span></li>
             <li><code>test_api.py</code> — FastAPI endpoint integration</li>
-            <li><code>test_system.py</code> — end-to-end system tests</li>
+            <li><code>test_server_extended.py</code> — paper-trade &amp; quiz endpoints</li>
           </ul>
         </div>
       </div>
       <div class="col">
         <div class="card green-left">
-          <h3 style="color:var(--accent2)">Test Patterns</h3>
-          <pre style="font-size:.78rem"><code><span class="cm"># test_finance_agent.py</span>
-<span class="kw">def</span> <span class="fn">test_basic_question</span>():
-    result = <span class="fn">ask_finance_agent</span>(
-        <span class="str">"What is compound interest?"</span>
-    )
-    <span class="kw">assert</span> <span class="fn">isinstance</span>(result, str)
-    <span class="kw">assert</span> <span class="fn">len</span>(result) > <span class="num">10</span>
-
-<span class="kw">def</span> <span class="fn">test_empty_question_raises</span>():
-    <span class="kw">with</span> pytest.<span class="fn">raises</span>(ValueError):
-        <span class="fn">ask_finance_agent</span>(<span class="str">""</span>)</code></pre>
+          <h3 style="color:var(--accent2)">Mock Patterns (no API keys needed)</h3>
+          <pre style="font-size:.76rem"><code><span class="cm"># test_mcp_server.py — mock pattern</span>
+<span class="kw">def</span> <span class="fn">test_returns_agent_and_answer</span>():
+    mock_result = {
+        <span class="str">"answer"</span>: <span class="str">"Diversification..."</span>,
+        <span class="str">"agent"</span>: <span class="str">"finance_qa_agent"</span>,
+        <span class="str">"session_id"</span>: <span class="str">"test-sid"</span>,
+    }
+    <span class="kw">with</span> patch(<span class="str">"src.workflow.orchestrator.process_query"</span>,
+               return_value=mock_result):
+        result = <span class="fn">ask_finance_assistant</span>(<span class="str">"What is DCA?"</span>)
+    <span class="kw">assert</span> <span class="str">"finance_qa_agent"</span> <span class="kw">in</span> result</code></pre>
         </div>
         <div class="card gold-left">
-          <h3 style="color:var(--gold)">Configuration</h3>
-          <p>All agent behaviour is driven by <code>config.yaml</code> — model choice, temperature, Tavily/Pinecone toggles, LangSmith tracing flag, and per-agent overrides — making test environments easy to isolate.</p>
+          <h3 style="color:var(--gold)">Run Tests</h3>
+          <pre style="font-size:.78rem"><code>pytest tests/ -v --tb=short
+<span class="cm"># → 388 passed, 0 failed, 25.7s</span></code></pre>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
-  <!-- SLIDE 12 – DEMO WALKTHROUGH                                        -->
+  <!-- SLIDE 12 – DEMO SCRIPT                                            -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <section class="slide">
     <div class="slide-header">
       <span class="slide-num">12</span>
       <div class="slide-title-line"></div>
-      <h2 style="margin:0">Live Demo Flow</h2>
+      <h2 style="margin:0">8-Minute Demo Script <span style="font-size:1rem;color:var(--text-dim);font-weight:400">(80% backend focus)</span></h2>
     </div>
 
-    <div class="grid-3" style="margin-bottom:16px">
-      <div class="card accent-left">
-        <span class="icon">1️⃣</span>
-        <h3>Start the Backend</h3>
-        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Activate environment</span>
-source .venv/bin/activate
+    <div class="two-col" style="flex:1;gap:16px">
+      <div class="col" style="gap:10px">
 
-<span class="cm"># Start FastAPI server</span>
-uvicorn src.web_app.server:app \
-  --host 0.0.0.0 --port 8000 \
-  --reload</code></pre>
+        <div class="card accent-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem">⏱ 0:00–0:45 &nbsp;—&nbsp; Cold Start</h3>
+          <p style="font-size:.82rem">Show terminal: <code>uvicorn src.web_app.server:app --reload</code>. Open <code>:8000/docs</code>. Explain 17 FastAPI endpoints. Open <code>:5173</code> React dashboard.</p>
+        </div>
+
+        <div class="card warn-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--warn)">⏱ 0:45–2:30 &nbsp;—&nbsp; LangGraph Orchestrator</h3>
+          <p style="font-size:.82rem">Show <code>orchestrator.py</code> StateGraph diagram. Explain 3 nodes: <em>router → execute_agent → finalize</em>. Show <code>MemorySaver(thread_id=session_id)</code> wiring. Tab to LangSmith: show router span + ReAct child spans.</p>
+        </div>
+
+        <div class="card green-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--accent2)">⏱ 2:30–4:00 &nbsp;—&nbsp; Multi-Turn + Stock ReAct</h3>
+          <p style="font-size:.82rem">curl Turn 1: <em>"What is the wash sale rule?"</em> → routes to <code>tax_education_agent</code>, saved to SQLite.<br>curl Turn 2 (same session_id): <em>"Does it apply to ETFs?"</em> → LLM router sees history → correct routing.<br>curl: <em>"Compare NVDA and AMD"</em> → Stock agent: <code>get_stock_quote</code> × 2 + <code>get_stock_financials</code> × 2 visible in LangSmith ReAct loop.</p>
+        </div>
+
+        <div class="card purple-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--purple)">⏱ 4:00–5:15 &nbsp;—&nbsp; RAG + Real-Time Pipeline</h3>
+          <p style="font-size:.82rem">curl: <em>"Explain dollar-cost averaging"</em> → <code>should_use_rag()</code> True → Pinecone query → context injected.<br>curl: <em>"Who is the current Fed chair?"</em> → <code>is_realtime_query()</code> True → Tavily fetch → live answer.<br>Show <code>GET /rag/context?q=ETF</code> to display raw RAG chunks.</p>
+        </div>
       </div>
-      <div class="card green-left">
-        <span class="icon">2️⃣</span>
-        <h3 style="color:var(--accent2)">Start the Frontend</h3>
-        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Navigate to frontend</span>
-cd src/web_app/frontend
 
-<span class="cm"># Install &amp; run</span>
-npm install
-npm run dev
-<span class="cm"># → http://localhost:5173</span></code></pre>
-      </div>
-      <div class="card gold-left">
-        <span class="icon">3️⃣</span>
-        <h3 style="color:var(--gold)">Or use curl / Swagger</h3>
-        <pre style="font-size:.76rem;margin-top:6px"><code><span class="cm"># Quick API test</span>
-curl -X POST \
-  http://localhost:8000/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is DCA?"}'
+      <div class="col" style="gap:10px">
+        <div class="card gold-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--gold)">⏱ 5:15–6:15 &nbsp;—&nbsp; Live Market Data</h3>
+          <p style="font-size:.82rem">curl <code>GET /market/overview</code> → live SPY/VIX/GLD JSON.<br>curl <code>GET /market/chart</code> → 12-month monthly OHLCV.<br>curl <code>POST /portfolio/analyze</code> body: AAPL×10 + NVDA×5 → P&amp;L, allocation %, concentration risk.<br>Show same data rendered live in the React dashboard.</p>
+        </div>
 
-<span class="cm"># Interactive docs</span>
-open http://localhost:8000/docs</code></pre>
+        <div class="card teal-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--teal)">⏱ 6:15–7:00 &nbsp;—&nbsp; Paper Trading + Memory</h3>
+          <p style="font-size:.82rem">Chat: <em>"buy 5 AAPL"</em> → Trading Agent ReAct → <code>buy_stock</code> tool → SQLite update.<br><code>GET /portfolio/holdings/{sid}</code> shows position. <em>"sell 2 AAPL"</em> → P&amp;L computed.<br>Ask 6th question → Memory Synthesizer compresses 5 turns; show summary in <code>GET /history/{sid}</code>.</p>
+        </div>
+
+        <div class="card pink-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem;color:var(--pink)">⏱ 7:00–7:40 &nbsp;—&nbsp; MCP Server (Bonus)</h3>
+          <p style="font-size:.82rem">Run <code>fastmcp dev src/mcp_server/server.py</code> → MCP Inspector at <code>:6274</code>.<br>Call <code>get_stock_quote("NVDA")</code> — live price returned.<br>Call <code>ask_finance_assistant("What is DCA?")</code> — full agent pipeline, session tracked.<br>Show Claude Desktop config JSON snippet.</p>
+        </div>
+
+        <div class="card accent-left" style="padding:14px 18px">
+          <h3 style="font-size:.95rem">⏱ 7:40–8:00 &nbsp;—&nbsp; Tests &amp; Close</h3>
+          <p style="font-size:.82rem">Run <code>pytest tests/ -q</code> → <span class="green">388 passed, 0 failed</span>.<br>Show coverage.json. Point to README, docker-compose, LangSmith project.</p>
+        </div>
+
       </div>
     </div>
+  </section>
 
-    <div class="card purple-left">
-      <h3 style="color:var(--purple)">Demo Queries to Try</h3>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;font-size:.82rem">
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">�</span> "Is NVDA overvalued compared to AMD right now?"</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--warn)">📋</span> "What is the wash sale rule?" then "Does it apply to ETFs?" <em>(multi-turn)</em></div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--gold)">🎯</span> "How much should I save monthly to retire at 55 with $2M?"</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--pink)">📰</span> "Summarise the latest Fed interest rate decision."</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--accent2)">📊</span> "My portfolio is 80% tech stocks. Is that risky?"</div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;color:var(--text-dim)"><span style="color:var(--teal)">📈</span> "Is the tech sector outperforming the S&amp;P 500 this month?"</div>
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SLIDE 12b – MCP SERVER                                            -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <section class="slide">
+    <div class="slide-header">
+      <span class="slide-num">12b</span>
+      <div class="slide-title-line"></div>
+      <h2 style="margin:0">🔌 MCP Server — Claude Desktop Integration</h2>
+    </div>
+
+    <div class="two-col" style="flex:1">
+      <div class="col">
+        <div class="card accent-left">
+          <h3>What is MCP?</h3>
+          <p>Model Context Protocol lets Claude Desktop (and Cursor) call your tools natively mid-conversation — no copy-paste, no switching apps. The user just asks; Claude calls the tool and returns the result inline.</p>
+        </div>
+        <div class="card teal-left">
+          <h3 style="color:var(--teal)">6 Exposed Tools</h3>
+          <div style="font-size:.82rem;display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--accent)">ask_finance_assistant</code><span style="color:var(--text-dim)">Full 9-agent Q&amp;A, multi-turn</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--warn)">get_stock_quote</code><span style="color:var(--text-dim)">Live price, P/E, 52-wk range</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--accent2)">get_market_overview</code><span style="color:var(--text-dim)">SPY/QQQ/VIX snapshot</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--gold)">analyze_portfolio</code><span style="color:var(--text-dim)">P&amp;L + allocation %</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--pink)">get_financial_news</code><span style="color:var(--text-dim)">Latest headlines</span></div>
+            <div style="display:flex;gap:8px;align-items:center"><code style="color:var(--teal)">get_sector_performance</code><span style="color:var(--text-dim)">All 11 SPDR sectors</span></div>
+          </div>
+        </div>
+        <div class="card green-left">
+          <h3 style="color:var(--accent2)">Dev Mode</h3>
+          <pre style="font-size:.78rem"><code>fastmcp dev src/mcp_server/server.py
+<span class="cm"># Opens MCP Inspector at http://127.0.0.1:6274</span></code></pre>
+        </div>
       </div>
-      <div style="margin-top:14px;background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.76rem">
-        <span style="color:var(--gold)">Multi-turn curl:</span>
-        <code style="color:var(--text-dim)"> curl -X POST /ask -d '{"question":"Does it apply to ETFs?","session_id":"abc-123"}'</code>
-        — backend loads SQLite history, LLM router sees context, dispatches to tax agent.
+      <div class="col">
+        <div class="card purple-left">
+          <h3 style="color:var(--purple)">Claude Desktop Config</h3>
+          <pre style="font-size:.74rem"><code>{
+  <span class="str">"mcpServers"</span>: {
+    <span class="str">"ai-finance-assistant"</span>: {
+      <span class="str">"command"</span>: <span class="str">"python"</span>,
+      <span class="str">"args"</span>: [<span class="str">"-m"</span>, <span class="str">"fastmcp"</span>, <span class="str">"run"</span>,
+               <span class="str">"src/mcp_server/server.py"</span>],
+      <span class="str">"cwd"</span>: <span class="str">"/path/to/ai_finance_assistant"</span>,
+      <span class="str">"env"</span>: { <span class="str">"OPENAI_API_KEY"</span>: <span class="str">"sk-..."</span> }
+    }
+  }
+}</code></pre>
+        </div>
+        <div class="card gold-left">
+          <h3 style="color:var(--gold)">Example Claude Conversation</h3>
+          <div style="font-size:.8rem;display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+              <span style="color:var(--text-dim)">You:</span> <em>What's NVDA trading at right now?</em>
+            </div>
+            <div style="background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:10px 12px">
+              <div style="color:var(--accent);font-size:.72rem;margin-bottom:4px">🔌 [calls get_stock_quote("NVDA")]</div>
+              NVDA is trading at $921.59 (+2.14%), P/E 52.1, market cap $2.26T…
+            </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+              <span style="color:var(--text-dim)">You:</span> <em>Analyze my portfolio: 10 AAPL @ $150, 5 NVDA @ $500</em>
+            </div>
+            <div style="background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:10px 12px">
+              <div style="color:var(--accent);font-size:.72rem;margin-bottom:4px">🔌 [calls analyze_portfolio([...])]
+</div>
+              Total: $11,847 | P&amp;L: +$7,097 (+149%) | Risk: High (NVDA 77%)
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1112,7 +1202,7 @@ open http://localhost:8000/docs</code></pre>
       <div class="card warn-left">
         <span class="icon">🔬</span>
         <h3 style="color:var(--warn)">ReAct Tool Loop</h3>
-        <p>Stock Analyst agent uses <code>create_react_agent</code> with 5 yfinance tools — iterative Observation → Action.</p>
+        <p>Stock, Portfolio, Market, Tax &amp; Trading agents use <code>create_react_agent</code> — iterative Observation → Action.</p>
       </div>
       <div class="card purple-left">
         <span class="icon">🗄️</span>
@@ -1130,19 +1220,19 @@ open http://localhost:8000/docs</code></pre>
         <p>Pinecone vector search injects domain-specific document context for conceptual questions.</p>
       </div>
       <div class="card pink-left">
-        <span class="icon">💬</span>
-        <h3 style="color:var(--pink)">Session Continuity</h3>
-        <p>Frontend UUID maps to backend session. Follow-up questions continue the same thread across page reloads.</p>
+        <span class="icon">💹</span>
+        <h3 style="color:var(--pink)">Paper Trading</h3>
+        <p>Trading Agent executes paper buy/sell; positions stored in SQLite WAL. Full trade history audit trail.</p>
       </div>
       <div class="card accent-left">
-        <span class="icon">🔭</span>
-        <h3>Full Observability</h3>
-        <p>Every ReAct step and agent call traced in LangSmith — latency, tokens, tool calls, and errors.</p>
+        <span class="icon">🔌</span>
+        <h3>MCP Server</h3>
+        <p>6 tools exposed via FastMCP for Claude Desktop — stock quotes, market overview, portfolio analysis, Q&amp;A.</p>
       </div>
       <div class="card green-left">
-        <span class="icon">⚙️</span>
-        <h3 style="color:var(--accent2)">Config-Driven</h3>
-        <p>Single <code>config.yaml</code> controls model, temperature, RAG, search, and tracing toggles.</p>
+        <span class="icon">🐳</span>
+        <h3 style="color:var(--accent2)">Docker + 388 Tests</h3>
+        <p>Full docker-compose setup. 388 tests across 24 modules — no regressions, all green.</p>
       </div>
     </div>
   </section>
@@ -1225,15 +1315,17 @@ open http://localhost:8000/docs</code></pre>
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:28px">
-        <span class="tag">🧠 7 Specialized AI Agents</span>
+        <span class="tag">🧠 9 Specialized AI Agents</span>
         <span class="tag">📈 yfinance Live Data</span>
-        <span class="tag">🗄️ SQLite Memory</span>
+        <span class="tag">🗄️ SQLite Memory + Paper Trading</span>
         <span class="tag">🔬 ReAct Tool Loop</span>
         <span class="tag">🌿 Pinecone RAG</span>
         <span class="tag">🔍 Tavily Search</span>
         <span class="tag">🔗 LangGraph + MemorySaver</span>
-        <span class="tag">🔭 Full Observability</span>
-        <span class="tag">📊 React Dashboard</span>
+        <span class="tag">🔭 LangSmith Observability</span>
+        <span class="tag">🔌 MCP Server</span>
+        <span class="tag">🐳 Docker</span>
+        <span class="tag">✅ 388 Tests</span>
       </div>
 
       <p style="font-size:.9rem;color:var(--text-dim)">Questions?</p>
