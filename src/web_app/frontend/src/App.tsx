@@ -141,7 +141,7 @@ function AppContent() {
                     transition={{ duration: 0.25 }}
                     className="view-wrapper"
                   >
-                    <Dashboard onStartChat={handleStartChat} />
+                    <Dashboard onStartChat={handleStartChat} onNavigate={(tab) => navigate(`/${tab}`)} />
                   </motion.div>
                 }
               />

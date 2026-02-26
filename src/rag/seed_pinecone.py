@@ -25,6 +25,23 @@ _QUIZ_NAMESPACE = "quiz-pool"
 
 
 def load_markdown_files(dir_path: str) -> List[dict]:
+    """
+    Read all ``*.md`` files in *dir_path* and split them into paragraph chunks.
+
+    Each paragraph becomes one document dict ready for ``upsert_documents()``.
+    The chunk ID is ``<stem>-<paragraph_index>`` (e.g. ``investing-101-3``).
+
+    Parameters
+    ----------
+    dir_path : str
+        Filesystem path to the directory containing markdown files.
+
+    Returns
+    -------
+    list[dict]
+        List of ``{id, text, metadata}`` dicts.  Returns an empty list if the
+        directory does not exist.
+    """
     p = Path(dir_path)
     docs = []
     if not p.exists():

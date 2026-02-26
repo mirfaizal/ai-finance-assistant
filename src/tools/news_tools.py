@@ -33,6 +33,21 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; finance-assistant/1.0)"}
 
 
 def _fetch_rss(url: str, max_items: int) -> list[dict]:
+    """
+    Fetch and parse an RSS feed, returning up to *max_items* article dicts.
+
+    Parameters
+    ----------
+    url : str
+        Full URL of the RSS/Atom feed.
+    max_items : int
+        Maximum number of ``<item>`` entries to return.
+
+    Returns
+    -------
+    list[dict]
+        Each dict contains keys: ``title``, ``link``, ``published``, ``summary``.
+    """
     req = urllib.request.Request(url, headers=_HEADERS)
     with urllib.request.urlopen(req, timeout=12) as resp:
         content = resp.read()

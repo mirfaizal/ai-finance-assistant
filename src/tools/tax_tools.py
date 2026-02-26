@@ -17,6 +17,7 @@ from langchain_core.tools import tool
 
 
 def _safe_float(val) -> Optional[float]:
+    """Coerce *val* to float, returning ``None`` for any non-numeric input."""
     try:
         return float(val)
     except (TypeError, ValueError):
