@@ -25,21 +25,21 @@ Nine specialized agents, each an expert in a specific financial domain:
 """
 
 # ── Core Q&A / Education ──────────────────────────────────────────────────────
-from .finance_qa_agent.finance_agent import ask_finance_agent
-from .tax_education_agent.tax_agent import explain_tax_concepts
+from .finance_qa_agent import ask_finance_agent
+from .tax_education_agent import explain_tax_concepts
 
 # ── Market & Stock Data ───────────────────────────────────────────────────────
-from .stock_agent.stock_agent import ask_stock_agent
-from .market_analysis_agent.market_agent import analyze_market
-from .trading_agent.trading_agent import ask_trading_agent
+from .stock_agent import ask_stock_agent
+from .market_analysis_agent import analyze_market
+from .trading_agent import ask_trading_agent
 
 # ── Portfolio & Goals ─────────────────────────────────────────────────────────
-from .portfolio_analysis_agent.portfolio_agent import analyze_portfolio
-from .goal_planning_agent.goal_agent import plan_goals
+from .portfolio_analysis_agent import analyze_portfolio
+from .goal_planning_agent import plan_goals
 
 # ── News & Memory ─────────────────────────────────────────────────────────────
-from .news_synthesizer_agent.news_agent import synthesize_news
-from .memory_synthesizer_agent.memory_agent import synthesize_memory
+from .news_synthesizer_agent import synthesize_news
+from .memory_synthesizer_agent import synthesize_memory
 
 __all__ = [
     # Core Q&A / Education

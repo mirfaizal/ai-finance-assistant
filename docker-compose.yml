@@ -19,6 +19,8 @@ services:
       # Override config.yaml server settings if needed
       - HOST=0.0.0.0
       - PORT=8000
+      # Enable LangSmith tracing when set to true and LANGCHAIN_API_KEY present
+      - LANGCHAIN_TRACING_V2=true
     volumes:
       - db_data:/app/data # SQLite persistence
     ports:

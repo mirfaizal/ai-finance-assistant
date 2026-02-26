@@ -67,10 +67,45 @@ def _get_pinecone_index():
         logger.info("Connected to Pinecone index: %s", index_name)
         return index
     except Exception as exc:
+        # Try to create the index if it does not exist (best-effort).
+        logger.info("Pinecone index '%s' not found; attempting to create it.", index_name)
+        # Try several call signatures to handle different pinecone SDK versions.
+        creation_errors = []
+        try:
+            # Preferred new-style call: name + dimension + metric + spec
+            spec = {"serverless": {}}
+            pc.create_index(index_name, dimension=_EMBEDDING_DIM, metric="cosine", spec=spec)
+            index = pc.Index(index_name)
+            logger.info("Created and connected to Pinecone index (signature A): %s", index_name)
+            return index
+        except Exception as exc_a:
+            creation_errors.append(exc_a)
+        try:
+            # Older style: positional dimension then spec
+            spec = {"serverless": {}}
+            pc.create_index(index_name, _EMBEDDING_DIM, spec)
+            index = pc.Index(index_name)
+            logger.info("Created and connected to Pinecone index (signature B): %s", index_name)
+            return index
+        except Exception as exc_b:
+            creation_errors.append(exc_b)
+        try:
+            # Fallback: minimal create (some SDKs accept name+dimension only)
+            pc.create_index(index_name, _EMBEDDING_DIM)
+            index = pc.Index(index_name)
+            logger.info("Created and connected to Pinecone index (signature C): %s", index_name)
+            return index
+        except Exception as exc_c:
+            creation_errors.append(exc_c)
+
+        # If we reach here, all creation attempts failed; show the first underlying error.
+        logger.warning("Pinecone index creation attempts failed: %s", creation_errors[0])
         raise ConnectionError(
-            f"Could not connect to Pinecone index '{index_name}'. "
-            "Check PINECONE_INDEX and ensure the index exists."
-        ) from exc
+            f"Could not connect to or create Pinecone index '{index_name}'. "
+            "Ensure PINECONE_INDEX is correct, your Pinecone API key has project access, "
+            "and your Pinecone project supports creating indexes via the API. "
+            "See logs for details."
+        ) from creation_errors[0]
 
 
 @lru_cache(maxsize=1)

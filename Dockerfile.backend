@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/        ./src/
 COPY config.yaml .
 
+# Include bundled data (academy content) so `/rag/seed` can read it inside the image
+ # bundled data (academy) lives under src/rag/academy and is already copied via `COPY src/ ./src/`
+
 # SQLite database will be written to /app/data (mount a volume here)
 RUN mkdir -p /app/data
 

@@ -14,7 +14,11 @@ interface ChartPoint {
     dow: number;
 }
 
-export function MarketChart() {
+interface MarketChartProps {
+  hideHeader?: boolean;
+}
+
+export function MarketChart({ hideHeader }: MarketChartProps = {}) {
     const [data, setData] = useState<ChartPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -54,12 +58,14 @@ export function MarketChart() {
 
     return (
         <div className="chart-card">
+            {!hideHeader && (
             <div className="chart-header">
                 <h3>Market Trends</h3>
                 <span className="chart-badge" style={error ? { color: '#ef4444' } : {}}>
                     {loading ? '…' : error ? 'Offline' : '12M Live'}
                 </span>
             </div>
+            )}
 
             {loading ? (
                 <div className="chart-skeleton" style={{ height: 200 }} />

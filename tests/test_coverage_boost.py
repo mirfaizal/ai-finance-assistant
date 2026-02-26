@@ -191,12 +191,15 @@ class TestRouterAgentClass:
         # With no agents, returns None
         assert result["agent_name"] is None
 
-    def test_can_handle_always_returns_1(self):
-        from src.core.protocol import AgentInput
+    def test_can_handle_returns_float(self):
         from src.core.router import RouterAgent
+        from src.agents.example_agents import FinancialAnalystAgent
         router = RouterAgent()
-        score = router.can_handle("any query")
-        assert score == 1.0
+        # Without registered agents returns 0.0; with an agent it returns > 0
+        router.register_agents([FinancialAnalystAgent()])
+        score = router.can_handle("Analyze AAPL stock")
+        assert isinstance(score, float)
+        assert score >= 0.0
 
     def test_call_routes_query(self):
         from src.core.protocol import AgentInput
@@ -263,10 +266,11 @@ class TestRagRetriever:
         assert "Stocks" in result and "Bonds" in result
 
     @patch("src.rag.retriever.query_similar", side_effect=Exception("Pinecone down"))
-    def test_exception_returns_empty(self, mock_qs):
+    def test_exception_propagates(self, mock_qs):
+        """get_rag_context does not catch query_similar exceptions — they propagate."""
         from src.rag.retriever import get_rag_context
-        result = get_rag_context("What is an ETF?")
-        assert result == ""
+        with pytest.raises(Exception, match="Pinecone down"):
+            get_rag_context("What is an ETF?")
 
 
 class TestPineconeStore:
