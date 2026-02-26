@@ -52,6 +52,7 @@ import { detectAgent, getAgent, backendAgentToType } from '../lib/agentEngine';
 import { askQuestion, getPortfolioHoldings } from '../lib/api';
 import { BASE_URL } from '../lib/config';
 import { appendMessage, getSession, getBackendSessionId, setBackendSessionId } from '../lib/storage';
+import { generateId } from '../lib/uuid';
 import { saveHoldings } from '../lib/holdingsStore';
 import type { Message, AgentType } from '../lib/types';
 
@@ -111,7 +112,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
         setError(null);
 
         const userMsg: Message = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: 'user',
             content: text,
             timestamp: Date.now(),
@@ -150,7 +151,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
             }
 
             const aiMsg: Message = {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 role: 'assistant',
                 content: res.answer,
                 agent: confirmedAgent,
