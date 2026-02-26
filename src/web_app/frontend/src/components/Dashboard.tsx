@@ -11,6 +11,7 @@ import { usePortfolioSummary } from '../lib/hooks/usePortfolioSummary';
 
 interface DashboardProps {
   onStartChat: (prefill?: string) => void;
+  onNavigate?: (tab: string) => void;
 }
 
 interface LiveMetrics {
@@ -19,7 +20,7 @@ interface LiveMetrics {
   totalPnlPct: number;
 }
 
-export function Dashboard({ onStartChat }: DashboardProps) {
+export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
   const m = DASHBOARD_METRICS;
   const [live, setLive] = useState<LiveMetrics | null>(null);
   const [portfolioLoaded, setPortfolioLoaded] = useState(false);
@@ -42,10 +43,10 @@ export function Dashboard({ onStartChat }: DashboardProps) {
   }, [data, loaded]);
 
   // Before API responds show mock; once loaded always show live (even if $0)
-  const displayBalance  = portfolioLoaded ? (live?.totalBalance  ?? 0) : m.totalBalance;
-  const displayPnl      = portfolioLoaded ? (live?.totalPnl      ?? 0) : m.balanceChange;
-  const displayPnlPct   = portfolioLoaded ? (live?.totalPnlPct   ?? 0) : m.balanceChangePct;
-  const pnlPositive     = displayPnl >= 0;
+  const displayBalance = portfolioLoaded ? (live?.totalBalance ?? 0) : m.totalBalance;
+  const displayPnl = portfolioLoaded ? (live?.totalPnl ?? 0) : m.balanceChange;
+  const displayPnlPct = portfolioLoaded ? (live?.totalPnlPct ?? 0) : m.balanceChangePct;
+  const pnlPositive = displayPnl >= 0;
 
   return (
     <div className="dashboard">
@@ -111,9 +112,50 @@ export function Dashboard({ onStartChat }: DashboardProps) {
           <span className="metric-label">Risk Level</span>
           <span className="metric-value">{m.riskLevel}</span>
         </motion.div>
-        <motion.div className="metric-card icon-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
-          <PieChart size={20} />
-          <span>Balanced Allocation</span>
+        <motion.div
+          className="metric-card icon-card allocation-card"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          style={{ cursor: 'pointer', minWidth: 160 }}
+          onClick={() => onNavigate ? onNavigate('portfolio') : onStartChat('Show my portfolio allocation')}
+          title="View portfolio allocation"
+        >
+          <PieChart size={18} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
+              Allocation
+            </span>
+            {(() => {
+              const holdings = data?.holdings;
+              if (!portfolioLoaded) {
+                return <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Loading…</span>;
+              }
+              if (!holdings || holdings.length === 0) {
+                return <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No holdings yet</span>;
+              }
+              const COLORS = ['#58a6ff', '#3fb950', '#bc8cff', '#f0883e', '#ff6eb3', '#39d0d8', '#e3b341'];
+              const top = [...holdings].sort((a, b) => b.allocation_pct - a.allocation_pct).slice(0, 4);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {top.map((h, i) => (
+                    <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', width: 34, flexShrink: 0 }}>{h.ticker}</span>
+                      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(h.allocation_pct, 100)}%`, height: '100%', background: COLORS[i % COLORS.length], borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontSize: '0.68rem', color: COLORS[i % COLORS.length], width: 30, textAlign: 'right', flexShrink: 0 }}>
+                        {h.allocation_pct.toFixed(0)}%
+                      </span>
+                    </div>
+                  ))}
+                  {holdings.length > 4 && (
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 1 }}>+{holdings.length - 4} more</span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         </motion.div>
       </section>
 
@@ -121,22 +163,64 @@ export function Dashboard({ onStartChat }: DashboardProps) {
       <section className="section">
         <h2 className="section-title">Recent Insights</h2>
         <div className="insights-grid">
-          {RECENT_INSIGHTS_ALERTS.map((alert, i) => (
-            <motion.div
-              key={alert.id}
-              className="insight-card alert"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.24 + i * 0.06 }}
-            >
-              <span className="insight-dot" style={{ background: alert.dotColor }} />
-              <div className="insight-content">
-                <div className="insight-title">{alert.title}</div>
-                <div className="insight-desc">{alert.desc}</div>
-                <span className="insight-time">{alert.timeAgo}</span>
-              </div>
-            </motion.div>
-          ))}
+          {(() => {
+            // Synthesize live insights from portfolio data when available
+            const holdings = data?.holdings ?? [];
+            const summary = data?.summary;
+
+            // Build dynamic insight list, replacing relevant mock items
+            const live = RECENT_INSIGHTS_ALERTS.map((alert) => {
+              if (alert.type === 'rebalance' && holdings.length > 0) {
+                // Find the most concentrated holding
+                const top = [...holdings].sort((a, b) => b.allocation_pct - a.allocation_pct)[0];
+                const risk = summary?.concentration_risk ?? 'low';
+                if (top && top.allocation_pct > 40) {
+                  return {
+                    ...alert,
+                    title: 'Concentration Risk Detected',
+                    desc: `${top.ticker} makes up ${top.allocation_pct.toFixed(0)}% of your portfolio — consider rebalancing.`,
+                    dotColor: risk === 'high' ? '#ef4444' : '#f59e0b',
+                    chatPrompt: `My portfolio has ${top.ticker} at ${top.allocation_pct.toFixed(0)}% allocation. Should I rebalance? What would a more balanced allocation look like?`,
+                    actionLabel: `Ask about ${top.ticker} concentration →`,
+                  };
+                }
+              }
+              if (alert.type === 'dividend' && holdings.length > 0) {
+                const tickers = holdings.map((h) => h.ticker).slice(0, 4).join(', ');
+                return {
+                  ...alert,
+                  title: 'Dividend & Income Tracking',
+                  desc: `Check dividend yields for your holdings: ${tickers}.`,
+                  chatPrompt: `What are the dividend yields for ${tickers}? Which of my holdings pay the best dividends?`,
+                  actionLabel: `Check dividend yields →`,
+                };
+              }
+              return alert;
+            });
+
+            return live.map((alert, i) => (
+              <motion.button
+                key={alert.id}
+                className="insight-card alert"
+                style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none', width: '100%', padding: 0 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.24 + i * 0.06 }}
+                onClick={() => onStartChat(alert.chatPrompt)}
+                title={alert.actionLabel}
+              >
+                <span className="insight-dot" style={{ background: alert.dotColor }} />
+                <div className="insight-content">
+                  <div className="insight-title">{alert.title}</div>
+                  <div className="insight-desc">{alert.desc}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <span className="insight-time">{alert.timeAgo}</span>
+                    <span style={{ fontSize: '0.7rem', color: alert.dotColor, opacity: 0.85 }}>{alert.actionLabel}</span>
+                  </div>
+                </div>
+              </motion.button>
+            ));
+          })()}
         </div>
       </section>
 

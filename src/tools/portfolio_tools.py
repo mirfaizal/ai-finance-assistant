@@ -19,6 +19,7 @@ from src.tools.stock_tools import get_stock_quote
 
 
 def _safe_float(val) -> Optional[float]:
+    """Coerce *val* to float, returning ``None`` for any non-numeric input."""
     try:
         return float(val)
     except (TypeError, ValueError):

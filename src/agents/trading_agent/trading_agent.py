@@ -30,6 +30,16 @@ _MAX_TOOL_ITERATIONS = 8
 
 
 def _get_llm() -> ChatOpenAI:
+    """
+    Construct a ChatOpenAI instance configured for the trading agent.
+
+    Uses ``OPENAI_MODEL`` env var (default ``gpt-4.1-mini``) and hard-codes
+    ``temperature=0`` for deterministic tool-calling behaviour.
+
+    Returns
+    -------
+    ChatOpenAI
+    """
     return ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         temperature=0,
@@ -38,6 +48,22 @@ def _get_llm() -> ChatOpenAI:
 
 
 def _format_history(history: List[Dict[str, str]]) -> str:
+    """
+    Format the last 6 conversation messages as a readable block for prompt injection.
+
+    Long assistant messages are truncated to 300 characters to keep prompt size
+    manageable.  Returns an empty string when *history* is empty.
+
+    Parameters
+    ----------
+    history : list of {"role": str, "content": str}
+        Prior conversation turns (newest last).
+
+    Returns
+    -------
+    str
+        Formatted history block, or "" if *history* is empty.
+    """
     if not history:
         return ""
     lines = ["\n\n### Conversation history:"]
@@ -86,7 +112,33 @@ def ask_trading_agent(
     history: Optional[List[Dict]] = None,
     memory_summary: Optional[str] = None,
 ) -> str:
-    """Execute a paper-trading action (buy / sell / view) via a ReAct tool loop."""
+    """
+    Execute a paper-trading action (buy / sell / view) via a ReAct tool loop.
+
+    The agent is bound to four session-scoped tools:
+
+    - ``buy_stock(ticker, shares)``       — paper-buy at live market price
+    - ``sell_stock(ticker, shares)``      — paper-sell at live market price
+    - ``view_holdings()``                 — list current SQLite holdings
+    - ``view_trade_history()``            — list recent trade log
+    - ``get_stock_quote(ticker)``         — fetch live price (pre-trade check)
+
+    Parameters
+    ----------
+    question : str
+        The user's trading instruction (e.g. ``"buy 10 AAPL"`` or ``"show my holdings"``).
+    session_id : str
+        Session identifier used to scope SQLite portfolio rows.
+    history : list of {"role": str, "content": str}, optional
+        Prior conversation turns for context.
+    memory_summary : str, optional
+        Compressed memory from the memory synthesizer agent.
+
+    Returns
+    -------
+    str
+        Plain-text confirmation or summary of the trading action.
+    """
     session_tools = make_trading_tools(session_id) + [get_stock_quote]
 
     user_text = question

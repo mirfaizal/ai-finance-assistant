@@ -12,6 +12,7 @@ _CONFIG_PATH = Path(__file__).resolve().parents[4] / "config.yaml"
 
 
 def _load_config() -> dict:
+    """Load the project-level config.yaml and return it as a dict (empty dict if missing)."""
     if _CONFIG_PATH.exists():
         with open(_CONFIG_PATH, "r") as f:
             return yaml.safe_load(f) or {}

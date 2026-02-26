@@ -23,6 +23,7 @@ Deploy the **AI Finance Assistant** on an EC2 instance using Docker Compose.
 | SSH | TCP | 22 | Your IP (`x.x.x.x/32`) |
 | HTTP (frontend) | TCP | 3000 | `0.0.0.0/0` |
 | HTTP (backend API) | TCP | 8000 | `0.0.0.0/0` |
+| HTTP (MCP server) | TCP | 8001 | `0.0.0.0/0` (or restrict to your IP) |
 
 ---
 
@@ -136,7 +137,8 @@ Docker Compose will:
 2. Build the **frontend** image from `src/web_app/frontend/Dockerfile.frontend`
 3. Start `ai-finance-backend` on port `8000`
 4. Wait for the backend health check, then start `ai-finance-frontend` on port `3000`
-5. Mount a named volume `db_data` for SQLite persistence
+5. Start `ai-finance-mcp` (MCP server in SSE mode) on port `8001`
+6. Mount a named volume `db_data` for SQLite persistence (shared by backend and MCP server)
 
 Expected output (abridged):
 
@@ -144,10 +146,11 @@ Expected output (abridged):
 [+] Building ...
  ✔ backend   Built
  ✔ frontend  Built
-[+] Running 3/3
+[+] Running 4/4
  ✔ Network ai_finance_assistant_app-net  Created
  ✔ Container ai-finance-backend          Started
  ✔ Container ai-finance-frontend         Started
+ ✔ Container ai-finance-mcp              Started
 ```
 
 ---
@@ -155,7 +158,7 @@ Expected output (abridged):
 ## Step 6 – Verify the Deployment
 
 ```bash
-# Check container status (both should be healthy/running)
+# Check container status (all three should be healthy/running)
 docker compose ps
 
 # Tail logs (follow)
@@ -164,9 +167,13 @@ docker compose logs -f
 # Tail a specific service
 docker compose logs -f backend
 docker compose logs -f frontend
+docker compose logs -f mcp-server
 
 # Quick health check
 curl http://localhost:8000/health
+
+# Verify MCP server is up
+curl http://localhost:8001/sse   # should return an SSE stream (200 OK)
 ```
 
 **Access from your browser:**
@@ -176,6 +183,7 @@ curl http://localhost:8000/health
 | Frontend | `http://ec2-54-235-54-228.compute-1.amazonaws.com:3000` |
 | Backend API | `http://ec2-54-235-54-228.compute-1.amazonaws.com:8000` |
 | API Docs (Swagger) | `http://ec2-54-235-54-228.compute-1.amazonaws.com:8000/docs` |
+| **MCP Server (SSE)** | **`http://ec2-54-235-54-228.compute-1.amazonaws.com:8001/sse`** |
 
 ---
 
@@ -210,6 +218,9 @@ docker compose up --build -d
 # Open a shell inside the running backend container
 docker exec -it ai-finance-backend /bin/bash
 
+# Open a shell inside the MCP server container
+docker exec -it ai-finance-mcp /bin/bash
+
 # Open a shell inside the frontend container
 docker exec -it ai-finance-frontend /bin/sh
 
@@ -221,7 +232,29 @@ docker system prune -f
 
 # Restart a single service without rebuilding
 docker compose restart backend
+docker compose restart mcp-server
 ```
+
+---
+
+## Claude Desktop → Remote MCP Server
+
+When the stack is running on EC2, point Claude Desktop at the **public** MCP SSE endpoint:
+
+```json
+{
+  "mcpServers": {
+    "ai-finance-assistant": {
+      "url": "http://ec2-54-235-54-228.compute-1.amazonaws.com:8001/sse"
+    }
+  }
+}
+```
+
+Save the file and restart Claude Desktop — the 🔌 plug icon will appear.
+
+> **Security note:** Port 8001 is open to `0.0.0.0/0` in the guide above for convenience.
+> For production, restrict the inbound rule to your own IP (`x.x.x.x/32`).
 
 ---
 
@@ -250,5 +283,7 @@ docker run --rm \
 | `docker compose` not found | Install Compose v2 plugin (Step 2) |
 | Frontend stuck waiting for backend | Check backend logs: `docker compose logs backend` |
 | Port 3000 / 8000 not reachable | Verify Security Group inbound rules allow those ports |
+| MCP server (port 8001) not reachable | Add inbound rule TCP 8001 to the EC2 Security Group |
+| Claude Desktop shows MCP error | Verify `http://<EC2-IP>:8001/sse` is reachable; check `docker compose logs mcp-server` |
 | `OPENAI_API_KEY` missing error | Ensure `.env` is populated and saved before running compose |
 | Out of disk space | Run `docker system prune -f` and check free disk with `df -h` |
