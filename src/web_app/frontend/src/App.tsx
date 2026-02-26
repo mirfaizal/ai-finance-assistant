@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { LayoutDashboard, MessageSquare, TrendingUp, BookOpen, Briefcase } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ChatInterface } from './components/ChatInterface';
@@ -14,9 +15,35 @@ import {
 } from './lib/storage';
 import type { ChatSession, UserProfile } from './lib/types';
 
+const MOBILE_NAV = [
+  { path: '/', label: 'Home', icon: LayoutDashboard },
+  { path: '/assistant', label: 'Chat', icon: MessageSquare },
+  { path: '/markets', label: 'Markets', icon: TrendingUp },
+  { path: '/learn', label: 'Learn', icon: BookOpen },
+  { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
+] as const;
+
+function MobileNav() {
+  return (
+    <nav className="mobile-nav" aria-label="Mobile navigation">
+      {MOBILE_NAV.map(({ path, label, icon: Icon }) => (
+        <NavLink
+          key={path}
+          to={path}
+          end={path === '/'}
+          className={({ isActive }) => `mobile-nav-item${isActive ? ' active' : ''}`}
+        >
+          <Icon size={20} />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
 function AppContent() {
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 1024);
   const [sessions, setSessions] = useState<ChatSession[]>(() => getSessions());
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(() => getActiveSessionId());
   const [profile, setProfile] = useState<UserProfile>(() => getProfile());
@@ -25,6 +52,19 @@ function AppContent() {
     const p = getProfile();
     return p.isNewUser || !p.completedOnboarding;
   });
+
+  // Auto-collapse sidebar on tablet / expand on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1024) {
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleModalComplete = (updates: Partial<UserProfile>) => {
     const updated = { ...profile, ...updates };
@@ -175,6 +215,8 @@ function AppContent() {
 
         <RightSidebar />
       </div>
+
+      <MobileNav />
     </>
   );
 }
