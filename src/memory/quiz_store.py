@@ -109,3 +109,12 @@ class QuizStore:
                     (last_n,),
                 ).fetchall()
         return [dict(r) for r in rows]
+
+    def get_answered_pool_ids(self, session_id: str) -> list[str]:
+        """Return list of pool question_ids already answered in this session."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT question_id FROM answers WHERE session_id=?",
+                (session_id,),
+            ).fetchall()
+        return [r[0] for r in rows]

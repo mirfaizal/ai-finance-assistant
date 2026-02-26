@@ -42,6 +42,10 @@ yfinance>=0.2.54
 # Used internally by yfinance for concurrent data fetching.
 aiohttp>=3.9.0
 
+# ── MCP Server (Claude Desktop integration) ───────────────────────────────────
+# Exposes finance tools to Claude Desktop and other MCP clients.
+fastmcp
+
 # --- Optional / future modules (commented out until needed) ---
 # langchain>=0.2.0
 # faiss-cpu>=1.7.4
