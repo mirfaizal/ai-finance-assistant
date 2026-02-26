@@ -1,4 +1,5 @@
 import type { ChatSession, Message, UserProfile } from './types';
+import { generateId } from './uuid';
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
 const SESSIONS_KEY = 'finnie_sessions';
@@ -31,7 +32,7 @@ export function setActiveSessionId(id: string): void {
 
 export function createSession(): ChatSession {
   const session: ChatSession = {
-    id: crypto.randomUUID(),
+    id: generateId(),
     title: 'New conversation',
     messages: [],
     createdAt: Date.now(),
