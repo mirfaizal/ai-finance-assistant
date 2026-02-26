@@ -1,15 +1,27 @@
 """FastAPI server for the AI Finance Assistant."""
 
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from src.workflow.orchestrator import process_query
 from src.memory.conversation_store import ConversationStore
 from src.memory.portfolio_store import PortfolioStore
 from src.utils.logging import get_logger
+from src.utils.logging import get_logger
+from src.rag.retriever import get_rag_context
+from src.memory.quiz_store import QuizStore
+from uuid import uuid4
+import json
+import os
 
+# Quiz store (SQLite-backed)
+_quiz_store = QuizStore()
 logger = get_logger(__name__)
+
+# Protect quiz and seed endpoints with optional API keys when set in env
+QUIZ_API_KEY = os.getenv("QUIZ_API_KEY")  # required header X-QUIZ-API-KEY for quiz endpoints when set
+RAG_ADMIN_KEY = os.getenv("RAG_ADMIN_KEY")  # required header X-RAG-ADMIN-KEY for /rag/seed when set
 
 app = FastAPI(
     title="AI Finance Assistant",
@@ -380,6 +392,242 @@ def paper_sell(session_id: str, request: SellRequest) -> dict:
     except Exception as exc:
         logger.error("paper_sell error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get(
+    "/portfolio/summary/{session_id}",
+    summary="Live portfolio summary from SQLite WAL holdings",
+)
+def portfolio_summary(session_id: str) -> dict:
+    """
+    Load holdings from the SQLite WAL paper-trading store, fetch live prices
+    via yfinance, and return total value, P&L, and per-ticker allocation.
+
+    Returns an empty summary when the session has no holdings yet.
+    """
+    import json
+    from src.tools.portfolio_tools import analyze_portfolio  # type: ignore[attr-defined]
+
+    holdings = _portfolio_store.get_holdings(session_id)
+    if not holdings:
+        return {
+            "session_id": session_id,
+            "holdings": [],
+            "summary": {
+                "total_value": 0.0,
+                "total_cost": 0.0,
+                "total_pnl": 0.0,
+                "total_pnl_pct": 0.0,
+                "num_positions": 0,
+                "largest_position_pct": 0.0,
+                "concentration_risk": "none",
+            },
+        }
+
+    clean = [
+        {"ticker": h["ticker"], "shares": h["shares"], "avg_cost": h["avg_cost"]}
+        for h in holdings
+    ]
+    try:
+        raw = analyze_portfolio.invoke({"holdings_json": json.dumps(clean)})
+        result = json.loads(raw)
+        result["session_id"] = session_id
+        return result
+    except Exception as exc:
+        logger.error("portfolio_summary error: %s", exc)
+        return {
+            "session_id": session_id,
+            "holdings": [],
+            "summary": {"total_value": 0.0, "total_pnl": 0.0, "total_pnl_pct": 0.0,
+                        "concentration_risk": "none"},
+            "error": str(exc),
+        }
+
+
+@app.get("/market/news", summary="Latest financial news headlines via yfinance")
+def market_news(tickers: str = "SPY,AAPL,MSFT,NVDA,TSLA", limit: int = 15) -> dict:
+    """
+    Fetch deduplicated financial news for the given comma-separated tickers.
+    Supports both the legacy flat yfinance news format and the newer nested
+    ``content`` format.  Results are sorted newest-first.
+    """
+    import yfinance as yf
+    import time as _time
+
+    seen: set = set()
+    articles = []
+
+    for sym in tickers.split(","):
+        sym = sym.strip().upper()
+        if not sym:
+            continue
+        try:
+            tk = yf.Ticker(sym)
+            for item in (tk.news or []):
+                # New yfinance format wraps everything under "content"
+                content = item.get("content") or {}
+                title = content.get("title") or item.get("title", "")
+                if not title or title in seen:
+                    continue
+                seen.add(title)
+
+                provider = (
+                    (content.get("provider") or {}).get("displayName")
+                    or item.get("publisher", "—")
+                )
+                pub = content.get("pubDate", "") or ""
+                if not pub:
+                    ts = item.get("providerPublishTime", 0)
+                    pub = (_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime(ts))
+                           if ts else "")
+
+                link = (
+                    (content.get("canonicalUrl") or {}).get("url", "")
+                    or item.get("link", "")
+                )
+                articles.append({
+                    "title":        title,
+                    "publisher":    provider,
+                    "link":         link,
+                    "published_at": pub,
+                    "ticker":       sym,
+                })
+        except Exception:
+            continue
+
+    articles.sort(key=lambda a: a.get("published_at", ""), reverse=True)
+    deduped = articles[:limit]
+    return {"articles": deduped, "count": len(deduped)}
+
+
+# ── RAG / Quiz endpoints (dev demo helpers) ─────────────────────────────────
+
+
+@app.get("/rag/context", summary="Return RAG context for a query")
+def rag_context(q: str, top_k: int = 3):
+    """Return formatted RAG context for debugging or generation."""
+    ctx = get_rag_context(q, top_k=top_k, agent_filter="finance_qa")
+    return {"query": q, "context": ctx}
+
+
+@app.post("/rag/seed", summary="Seed Pinecone from data/academy (dev only)")
+def rag_seed(request: Request) -> dict:
+    """Seed the Pinecone index from bundled data/academy markdown files.
+
+    Note: this endpoint is meant for dev convenience and requires that
+    PINECONE_API_KEY and OPENAI_API_KEY are configured in the environment.
+    """
+    from src.rag.seed_pinecone import seed_from_directory
+    # Require admin key if configured
+    if RAG_ADMIN_KEY:
+        provided = request.headers.get("x-rag-admin-key") or request.headers.get("X-RAG-ADMIN-KEY")
+        if not provided or provided != RAG_ADMIN_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid admin key")
+    try:
+        n = seed_from_directory("data/academy")
+        return {"seeded": n}
+    except Exception as exc:
+        logger.error("RAG seed failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/quiz/generate", summary="Generate a multiple-choice quiz question from RAG context")
+def quiz_generate(request: Request, topic: str, session_id: Optional[str] = None):
+    """Generate a multiple-choice question for a given topic using RAG context
+
+    Uses OpenAI to convert retrieved context into a single-question JSON payload:
+    { question_id, question, choices: [...], answer_index }
+    """
+    if not topic or not topic.strip():
+        raise HTTPException(status_code=422, detail="topic required")
+    # Get RAG context
+    ctx = get_rag_context(topic, top_k=3, agent_filter="finance_qa")
+    prompt = (
+        "You are a finance teacher. Using the context below, generate ONE multiple-choice question (4 options) "
+        "with a single correct answer. Output JSON only with keys: question, choices (array), answer_index (0-3).\n\n"
+        "Context:\n" + ctx
+    )
+    # If QUIZ_API_KEY is set, require it in header X-QUIZ-API-KEY
+    if QUIZ_API_KEY:
+        provided = request.headers.get("x-quiz-api-key") or request.headers.get("X-QUIZ-API-KEY")
+        if not provided or provided != QUIZ_API_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid quiz API key")
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        resp = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+            temperature=0.2,
+        )
+        text = resp.choices[0].message.content
+        try:
+            payload = json.loads(text)
+        except Exception:
+            # Try to extract the first JSON object from the model output
+            import re
+            logger.warning("Quiz generation: model output not pure JSON, attempting extraction. output=%%s", text[:500])
+            m = re.search(r"\{.*\}", text, re.S)
+            if not m:
+                raise
+            payload = json.loads(m.group(0))
+        qid = str(uuid4())
+        # persist the question answer index and optional session association
+        _quiz_store.store_question(qid, int(payload["answer_index"]), session_id)
+        return {"question_id": qid, **payload}
+    except Exception as exc:
+        logger.error("Quiz generation failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/quiz/answer", summary="Submit quiz answer and award coins")
+def quiz_answer(request: Request, question_id: str, selected_index: int, session_id: Optional[str] = None) -> dict:
+    """Accept an answer, compare to stored correct index, and award coins.
+
+    Rewards: +10 coins for correct, 0 for incorrect. Returns current coin balance.
+    """
+    # If QUIZ_API_KEY is set, require it in header
+    if QUIZ_API_KEY:
+        provided = request.headers.get("x-quiz-api-key") or request.headers.get("X-QUIZ-API-KEY")
+        if not provided or provided != QUIZ_API_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid quiz API key")
+
+    correct = _quiz_store.get_answer_index(question_id)
+    if correct is None:
+        raise HTTPException(status_code=404, detail="question not found")
+    awarded = 10 if int(selected_index) == int(correct) else 0
+    sid = session_id or "anonymous"
+    new_balance = _quiz_store.award_coins(sid, awarded) if awarded else _quiz_store.get_coins(sid)
+    # persist answer history for auditing
+    try:
+        _quiz_store.store_answer(question_id, sid, selected_index, selected_index == correct, awarded)
+    except Exception:
+        logger.exception("Failed to store quiz answer history")
+    return {"correct": selected_index == correct, "awarded": awarded, "coins": new_balance}
+
+
+@app.get("/quiz/coins/{session_id}", summary="Get coin balance for a session")
+def quiz_coins(request: Request, session_id: str) -> dict:
+    """Return the current coin balance for a given session_id."""
+    if QUIZ_API_KEY:
+        provided = request.headers.get("x-quiz-api-key") or request.headers.get("X-QUIZ-API-KEY")
+        if not provided or provided != QUIZ_API_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid quiz API key")
+    coins = _quiz_store.get_coins(session_id or "anonymous")
+    return {"session_id": session_id, "coins": coins}
+
+
+@app.get("/quiz/history", summary="Get quiz answer history (dev)")
+def quiz_history(request: Request, session_id: Optional[str] = None, last_n: int = 50) -> dict:
+    if QUIZ_API_KEY:
+        provided = request.headers.get("x-quiz-api-key") or request.headers.get("X-QUIZ-API-KEY")
+        if not provided or provided != QUIZ_API_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid quiz API key")
+    history = _quiz_store.get_history(session_id=session_id, last_n=last_n)
+    return {"session_id": session_id, "history": history}
+
 
 
 @app.delete(

@@ -62,3 +62,91 @@ export const EDUCATIONAL_CARDS = [
   { title: 'Understanding the 50/30/20 Rule', category: 'Budgeting', readTime: '4 min' },
   { title: 'Roth vs Traditional IRA Explained', category: 'Retirement', readTime: '5 min' },
 ];
+
+export const MARKET_NEWS = [
+  {
+    id: '1',
+    tag: 'GLOBAL MARKETS',
+    headline: 'Fed signals potential rate cuts in late 2024',
+    snippet: 'Recent economic data suggests inflation is cooling, prompting discussions about monetary policy shifts...',
+  },
+  {
+    id: '2',
+    tag: 'EARNINGS',
+    headline: 'Tech giants beat expectations in Q4',
+    snippet: 'Major technology companies reported stronger-than-expected results, driving sector gains...',
+  },
+  {
+    id: '3',
+    tag: 'COMMODITIES',
+    headline: 'Oil prices stabilize amid supply outlook',
+    snippet: 'OPEC+ production decisions and demand forecasts point to a balanced market in the coming months...',
+  },
+];
+
+// Dashboard metric cards and recent insights (alerts)
+export const DASHBOARD_METRICS = {
+  totalBalance: 100000,
+  balanceChange: 2403,
+  balanceChangePct: 1.9,
+  ytdReturn: 18.4,
+  estSavings: 4200,
+  taxEfficiency: 'High',
+  riskLevel: 'Moderate',
+};
+
+export const RECENT_INSIGHTS_ALERTS = [
+  {
+    id: '1',
+    type: 'tax',
+    title: 'Tax Optimization Alert',
+    desc: 'You have unrealized losses in Sector B that could offset gains. Consider harvesting.',
+    timeAgo: '2h ago',
+    dotColor: '#f59e0b',
+  },
+  {
+    id: '2',
+    type: 'rebalance',
+    title: 'Portfolio Rebalancing',
+    desc: 'Your allocation to Tech has drifted 5% above target due to recent rally.',
+    timeAgo: '5h ago',
+    dotColor: '#3b82f6',
+  },
+  {
+    id: '3',
+    type: 'dividend',
+    title: 'Dividend Received',
+    desc: '$42.50 from VTI ETF.',
+    timeAgo: '1d ago',
+    dotColor: '#10b981',
+  },
+];
+
+// Quick actions matching design: Rebalance, Buy/Sell, Risk Check, Deposit
+export const DASHBOARD_QUICK_ACTIONS = [
+  { id: 'rebalance', label: 'Rebalance', icon: '🔄' },
+  { id: 'buysell', label: 'Buy/Sell', icon: '📈' },
+  { id: 'risk', label: 'Risk Check', icon: '📉' },
+  { id: 'deposit', label: 'Deposit', icon: '📥' },
+];
+
+// Learning / Financial Academy
+export const LEARNING_COURSES = [
+  { id: '1', title: 'Investing 101', desc: 'Start your journey here.', progress: 100, icon: '📖' },
+  { id: '2', title: 'Tax Strategies', desc: 'Keep more of what you earn.', progress: 45, icon: '📄' },
+  { id: '3', title: 'Market Mechanics', desc: 'How stock exchanges work.', progress: 10, icon: '🎬' },
+  { id: '4', title: 'Crypto Basics', desc: 'Understanding blockchain.', progress: 0, icon: '✓' },
+];
+
+export const RECOMMENDED_LEARNING = [
+  { title: 'Understanding ETFs', category: 'BEGINNER COURSE', progress: 33, desc: 'Learn how Exchange Traded Funds can diversify your portfolio instantly.' },
+  { title: 'The Power of Compounding', category: 'ARTICLE', readTime: '5 min read', desc: 'Why starting early is the most important factor in investing.' },
+];
+
+// Portfolio top holdings (for Portfolio page)
+export const TOP_HOLDINGS_MOCK = [
+  { ticker: 'VTI', pct: 35, value: 43607 },
+  { ticker: 'AAPL', pct: 12, value: 14951 },
+  { ticker: 'MSFT', pct: 8, value: 9967 },
+  { ticker: 'BND', pct: 20, value: 24918 },
+];

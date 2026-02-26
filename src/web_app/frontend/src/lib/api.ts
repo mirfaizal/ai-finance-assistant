@@ -103,3 +103,43 @@ export async function getPortfolioHoldings(
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
   return res.json() as Promise<PortfolioHoldingsResponse>;
 }
+
+// ── Quiz endpoints ──────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  question_id: string;
+  question: string;
+  choices: string[];
+}
+
+export async function generateQuiz(topic: string, sessionId?: string | null): Promise<QuizQuestion> {
+  const body = new URLSearchParams();
+  body.set('topic', topic);
+  if (sessionId) body.set('session_id', sessionId);
+
+  const res = await fetch(`${BASE_URL}/quiz/generate?${body.toString()}`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Backend error ${res.status}: ${err}`);
+  }
+  return res.json() as Promise<QuizQuestion>;
+}
+
+export async function submitQuizAnswer(questionId: string, selectedIndex: number, sessionId?: string | null) {
+  const params = new URLSearchParams();
+  params.set('question_id', questionId);
+  params.set('selected_index', String(selectedIndex));
+  if (sessionId) params.set('session_id', sessionId);
+
+  const res = await fetch(`${BASE_URL}/quiz/answer?${params.toString()}`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Backend error ${res.status}`);
+  return res.json();
+}
+
+export async function getCoinBalance(sessionId: string) {
+  const res = await fetch(`${BASE_URL}/quiz/coins/${encodeURIComponent(sessionId)}`);
+  if (!res.ok) throw new Error(`Backend error ${res.status}`);
+  return res.json();
+}

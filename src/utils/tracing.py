@@ -51,9 +51,12 @@ def get_langsmith_client():
         return None
     try:
         from langsmith import Client  # noqa: PLC0415
-        _client = Client(
-            api_key=os.getenv("LANGCHAIN_API_KEY"),
-        )
+        # Support org-scoped LangSmith API keys which require a workspace id.
+        workspace = os.getenv("LANGSMITH_WORKSPACE_ID") or os.getenv("LANGCHAIN_WORKSPACE_ID")
+        if workspace:
+            _client = Client(api_key=os.getenv("LANGCHAIN_API_KEY"), workspace_id=workspace)
+        else:
+            _client = Client(api_key=os.getenv("LANGCHAIN_API_KEY"))
         logger.info(
             "LangSmith tracing enabled. Project: %s",
             os.getenv("LANGCHAIN_PROJECT", "default"),

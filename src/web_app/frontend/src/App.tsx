@@ -1,18 +1,22 @@
 import { useState, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { ChatInterface } from './components/ChatInterface';
 import { RightSidebar } from './components/RightSidebar';
+import { MarketsPage } from './components/MarketsPage';
+import { LearningPage } from './components/LearningPage';
+import { PortfolioPage } from './components/PortfolioPage';
 import { RiskModal } from './components/RiskModal';
 import {
   getSessions, createSession, getActiveSessionId, setActiveSessionId, saveProfile, getProfile, deleteSession,
 } from './lib/storage';
 import type { ChatSession, UserProfile } from './lib/types';
 
-export default function App() {
+function AppContent() {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeView, setActiveView] = useState<'dashboard' | 'chat'>('dashboard');
   const [sessions, setSessions] = useState<ChatSession[]>(() => getSessions());
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(() => getActiveSessionId());
   const [profile, setProfile] = useState<UserProfile>(() => getProfile());
@@ -40,26 +44,23 @@ export default function App() {
   }, [activeSessionId]);
 
   const handleStartChat = (text?: string) => {
-    const sid = ensureSession();
+    ensureSession();
     if (text) setPrefill(text);
-    setActiveView('chat');
-    if (!activeSessionId) {
-      setActiveSessionIdState(sid);
-    }
+    navigate('/assistant');
   };
 
   const handleNewSession = () => {
     const s = createSession();
     setSessions(getSessions());
     setActiveSessionIdState(s.id);
-    setActiveView('chat');
+    navigate('/assistant');
     setPrefill(undefined);
   };
 
   const handleSessionSelect = (id: string) => {
     setActiveSessionId(id);
     setActiveSessionIdState(id);
-    setActiveView('chat');
+    navigate('/assistant');
   };
 
   const handleDeleteSession = (id: string) => {
@@ -67,7 +68,7 @@ export default function App() {
     setSessions(getSessions());
     if (activeSessionId === id) {
       setActiveSessionIdState(null);
-      setActiveView('dashboard');
+      navigate('/');
     }
   };
 
@@ -79,8 +80,6 @@ export default function App() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((c) => !c)}
-          activeView={activeView}
-          onViewChange={setActiveView}
           sessions={sessions}
           activeSessionId={activeSessionId}
           onSessionSelect={handleSessionSelect}
@@ -90,38 +89,100 @@ export default function App() {
 
         <main className="app-main">
           <AnimatePresence mode="wait">
-            {activeView === 'dashboard' ? (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.25 }}
-                className="view-wrapper"
-              >
-                <Dashboard onStartChat={handleStartChat} />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="chat"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.25 }}
-                className="view-wrapper"
-              >
-                <ChatInterface
-                  sessionId={ensureSession()}
-                  prefillMessage={prefill}
-                  onPrefillConsumed={() => setPrefill(undefined)}
-                />
-              </motion.div>
-            )}
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <motion.div
+                    key="dashboard"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25 }}
+                    className="view-wrapper"
+                  >
+                    <Dashboard onStartChat={handleStartChat} />
+                  </motion.div>
+                }
+              />
+              <Route
+                path="/assistant"
+                element={
+                  <motion.div
+                    key="chat"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.25 }}
+                    className="view-wrapper"
+                  >
+                    <ChatInterface
+                      sessionId={ensureSession()}
+                      prefillMessage={prefill}
+                      onPrefillConsumed={() => setPrefill(undefined)}
+                    />
+                  </motion.div>
+                }
+              />
+              <Route
+                path="/markets"
+                element={
+                  <motion.div
+                    key="markets"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="view-wrapper"
+                  >
+                    <MarketsPage />
+                  </motion.div>
+                }
+              />
+              <Route
+                path="/learn"
+                element={
+                  <motion.div
+                    key="learn"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="view-wrapper"
+                  >
+                    <LearningPage />
+                  </motion.div>
+                }
+              />
+              <Route
+                path="/portfolio"
+                element={
+                  <motion.div
+                    key="portfolio"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="view-wrapper"
+                  >
+                    <PortfolioPage />
+                  </motion.div>
+                }
+              />
+            </Routes>
           </AnimatePresence>
         </main>
 
         <RightSidebar />
       </div>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
