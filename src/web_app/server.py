@@ -1,5 +1,11 @@
 """FastAPI server for the AI Finance Assistant."""
 
+# Load .env FIRST — must happen before any other imports so that env vars
+# (especially LANGCHAIN_TRACING_V2 / LANGCHAIN_API_KEY) are available when
+# @traceable decorators are evaluated at module-import time.
+from dotenv import load_dotenv
+load_dotenv()
+
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

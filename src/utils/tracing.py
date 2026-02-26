@@ -109,10 +109,12 @@ def traceable(
 
         try:
             from langsmith.run_helpers import traceable as ls_traceable  # noqa: PLC0415
+            client = get_langsmith_client()  # has workspace_id for org-scoped keys
             wrapped = ls_traceable(
                 run_type=run_type,
                 name=name or func.__name__,
                 tags=tags or [],
+                client=client,
             )(func)
             return wrapped  # type: ignore[return-value]
         except ImportError:
