@@ -4,10 +4,13 @@ Enhancements
 ------------
 - Pinecone RAG context for diversification frameworks and allocation guidelines.
 - LangSmith tracing via @traceable decorator
+- Reads SQLite holdings injected by the orchestrator for personalised analysis.
 """
 
 from __future__ import annotations
 
+import json as _json
+import re as _re
 from typing import Any
 
 from .client import get_client, MODEL, TEMPERATURE
@@ -26,21 +29,65 @@ def _build_portfolio_prompt(portfolio: dict[str, Any]) -> str:
     """
     Convert a portfolio dict into a human-readable prompt string.
 
-    Expected input shape::
+    Accepts two input shapes:
+
+    1. Legacy format (from PortfolioInput UI)::
+
+        {"assets": [{"symbol": "AAPL", "allocation": 0.25}, ...]}
+
+    2. SQLite holdings format (injected by orchestrator via _portfolio_with_holdings)::
 
         {
-            "assets": [
-                {"symbol": "AAPL", "allocation": 0.25},
-                {"symbol": "VTI",  "allocation": 0.40},
-                {"symbol": "BND",  "allocation": 0.35},
-            ]
+            "assets": [],          # always empty in this path
+            "question": "...\\n\\nCurrent paper-portfolio holdings from database:\\n[{...}]"
         }
 
-    The function is intentionally lenient — it handles missing keys and partial
-    data gracefully so the agent can still provide educational feedback.
+    In case 2 the holdings JSON block is parsed and rendered as a personalised
+    prompt so the agent gives specific advice instead of generic guidance.
     """
     assets: list[dict] = portfolio.get("assets", [])
+    question: str = portfolio.get("question", "")
 
+    # ── Try to extract SQLite holdings injected into the question string ───────
+    sqlite_holdings: list[dict] = []
+    holdings_match = _re.search(
+        r"Current paper-portfolio holdings from database:\s*(\[.*?\])",
+        question,
+        _re.S,
+    )
+    if holdings_match:
+        try:
+            sqlite_holdings = _json.loads(holdings_match.group(1))
+        except Exception:
+            pass
+
+    # ── SQLite holdings path — personalised analysis ───────────────────────────
+    if sqlite_holdings:
+        # Extract just the user's original question (before the injected block)
+        user_question = question.split("\n\n")[0].strip()
+        lines: list[str] = [
+            f"The user's question: {user_question}",
+            "",
+            "Their actual paper-trading portfolio (from the database):",
+        ]
+        for h in sqlite_holdings:
+            ticker = h.get("ticker", "?")
+            shares = h.get("shares", 0)
+            avg_cost = h.get("avg_cost", 0)
+            lines.append(f"  • {ticker}: {shares} share(s) at average cost ${avg_cost:.2f}")
+        lines.append(
+            "\nUsing ONLY these actual holdings, provide a personalised educational analysis "
+            "that covers:\n"
+            "1. Sector/industry concentration (e.g. both stocks in same sector?)\n"
+            "2. Missing asset classes (bonds, international, commodities, REITs)\n"
+            "3. Specific diversification suggestions with example tickers or ETFs\n"
+            "4. Concentration risk given the number and size of positions\n"
+            "Do NOT give generic 'from scratch' advice — the user already has real positions. "
+            "Reference their specific tickers by name."
+        )
+        return "\n".join(lines)
+
+    # ── Legacy assets[] path ───────────────────────────────────────────────────
     if not assets:
         return (
             "The user has submitted an empty or unspecified portfolio. "
@@ -48,13 +95,11 @@ def _build_portfolio_prompt(portfolio: dict[str, Any]) -> str:
             "building a diversified portfolio from scratch."
         )
 
-    lines: list[str] = ["Portfolio submitted for educational analysis:\n"]
-
+    lines = ["Portfolio submitted for educational analysis:\n"]
     total_allocation = 0.0
     for item in assets:
         symbol = item.get("symbol") or item.get("name") or "Unknown"
         allocation = item.get("allocation")
-
         if allocation is None:
             lines.append(f"  • {symbol}: allocation not specified")
         else:
@@ -66,19 +111,16 @@ def _build_portfolio_prompt(portfolio: dict[str, Any]) -> str:
                 lines.append(f"  • {symbol}: invalid allocation value ({allocation!r})")
 
     lines.append(f"\nTotal declared allocation: {total_allocation * 100:.1f}%")
-
     if abs(total_allocation - 1.0) > _ALLOCATION_WARN_THRESHOLD and total_allocation > 0:
         lines.append(
             f"Note: allocations sum to {total_allocation * 100:.1f}%, "
             "not 100% — please factor this into the analysis."
         )
-
     lines.append(
         "\nProvide a general educational analysis covering: "
         "asset-class diversification, concentration risk, inferred risk profile, "
         "and any notable observations. Do not give personalised investment advice."
     )
-
     return "\n".join(lines)
 
 
@@ -93,7 +135,8 @@ def analyze_portfolio(portfolio: dict[str, Any]) -> str:
         A dictionary describing the portfolio.  Must contain an ``"assets"`` key
         with a list of holdings, each having at least a ``"symbol"`` and an
         ``"allocation"`` (float, 0–1).  Missing or partial data is handled
-        gracefully.
+        gracefully.  May also contain a ``"question"`` key with SQLite holdings
+        injected by the orchestrator for personalised analysis.
 
     Returns
     -------

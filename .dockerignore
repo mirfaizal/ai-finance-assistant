@@ -4,10 +4,10 @@
 secrets/
 
 # ── Python artifacts ──────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
 *.so
 .pytest_cache/
 .mypy_cache/
