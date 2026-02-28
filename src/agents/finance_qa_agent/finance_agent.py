@@ -4,6 +4,7 @@ Enhancements
 ------------
 - Tavily real-time web search for current-affairs / live-data questions
 - Pinecone RAG context injection for conceptual / definitional questions
+- LangChain ConversationalRetrievalChain via Pinecone (with chat history)
 - LangSmith tracing via @traceable decorator
 """
 
@@ -15,6 +16,7 @@ from src.utils.logging import get_logger
 from src.utils.tracing import traceable
 from src.tools.web_search import web_search, is_realtime_query
 from src.rag.retriever import get_rag_context, should_use_rag
+from src.rag.langchain_rag import invoke_chain
 
 logger = get_logger(__name__)
 
@@ -83,3 +85,72 @@ def ask_finance_agent(question: str) -> str:
     answer = response.choices[0].message.content
     logger.info("Finance agent returning answer (first 80 chars): %s", answer[:80])
     return answer
+
+
+@traceable(name="finance_qa_agent_with_history", run_type="chain", tags=["finance", "qa", "rag"])
+def ask_finance_agent_with_history(
+    question: str,
+    chat_history: list[tuple[str, str]] | None = None,
+) -> dict:
+    """
+    Answer a financial question using a **LangChain ConversationalRetrievalChain**
+    backed by the ``ai-finance-rag`` Pinecone index.
+
+    Supports multi-turn conversations via ``chat_history`` and surfaces the
+    source documents that were retrieved from Pinecone.
+
+    Parameters
+    ----------
+    question : str
+        The user's financial question.
+    chat_history : list[tuple[str, str]] | None
+        Prior conversation turns as ``[(human, ai), ...]``.  Pass ``[]`` or
+        ``None`` for a fresh session.  Caller is responsible for appending
+        the returned answer to the list between turns.
+
+    Returns
+    -------
+    dict
+        ``{
+            "answer":           str,              # LLM answer
+            "sources":          list[str],        # deduplicated source names
+            "source_documents": list,             # raw LangChain Document objects
+        }``
+        If the LangChain chain is unavailable (missing credentials / packages),
+        falls back to ``ask_finance_agent()`` and returns the answer with empty
+        sources so the caller always receives a consistent schema.
+
+    Example
+    -------
+    >>> history = []
+    >>> r = ask_finance_agent_with_history("What is an ETF?", history)
+    >>> history.append(("What is an ETF?", r["answer"]))
+    >>> r2 = ask_finance_agent_with_history(
+    ...     "How do they differ from mutual funds?", history
+    ... )
+    """
+    if not question or not question.strip():
+        raise ValueError("Question must be a non-empty string.")
+
+    logger.info(
+        "Finance agent (with history) received question: %s | history_turns=%d",
+        question,
+        len(chat_history) if chat_history else 0,
+    )
+
+    result = invoke_chain(question=question, chat_history=chat_history or [])
+
+    # Graceful fallback: if the chain returned no answer, use the direct path
+    if not result.get("answer"):
+        logger.warning(
+            "LangChain RAG chain unavailable or returned empty answer; "
+            "falling back to ask_finance_agent()"
+        )
+        fallback_answer = ask_finance_agent(question)
+        return {
+            "answer":           fallback_answer,
+            "sources":          [],
+            "source_documents": [],
+        }
+
+    return result
