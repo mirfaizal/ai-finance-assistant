@@ -279,14 +279,37 @@ Requires `TAVILY_API_KEY` in `.env`. Agents fall back gracefully to LLM training
 
 ### Pinecone RAG (`src/rag/`)
 
+Two complementary RAG paths are available:
+
+**Path 1 — Direct prompt injection** (original, used by all agents via `retriever.py`):
 ```python
 from src.rag.retriever import get_rag_context, should_use_rag
 
 if should_use_rag(question):
     context = get_rag_context(question, top_k=3, agent_filter="finance_qa")
+    # → formatted context string injected into system prompt
 ```
 
-**Setup:** Create a Pinecone Serverless index (`dimension=1536`), set `PINECONE_API_KEY` and `PINECONE_INDEX` in `.env`, then call `upsert_documents()` to populate.
+**Path 2 — LangChain `ConversationalRetrievalChain`** (new, used by `ask_finance_agent_with_history`):
+```python
+from src.agents.finance_qa_agent import ask_finance_agent_with_history
+
+history = []
+result = ask_finance_agent_with_history("What is an ETF?", history)
+# result = {"answer": str, "sources": list[str], "source_documents": list}
+
+history.append(("What is an ETF?", result["answer"]))
+result2 = ask_finance_agent_with_history("How do they differ from mutual funds?", history)
+```
+
+The LangChain path uses `langchain_pinecone.PineconeVectorStore` with cosine similarity search (`k=3`) and a cached `ConversationalRetrievalChain` wired to `ChatOpenAI`. It returns **source document citations** and supports **multi-turn chat history**. Falls back gracefully to `ask_finance_agent()` if Pinecone credentials are unavailable.
+
+**Setup:** Create a Pinecone Serverless index (`dimension=1536`, `metric=cosine`), set `PINECONE_API_KEY` and `PINECONE_INDEX` in `.env`, then call `upsert_documents()` to populate.
+
+```bash
+# Install new dependencies (if not already installed)
+pip install langchain>=0.2.0 langchain-pinecone>=0.2.0
+```
 
 ---
 

@@ -670,15 +670,21 @@
     </div>
 
     <div class="card green-left">
-      <h3 style="color:var(--accent2)">Enriched Prompt Construction (per agent)</h3>
-      <pre style="margin-top:8px"><code><span class="cm"># finance_agent.py</span>
-<span class="kw">if</span> <span class="fn">is_realtime_query</span>(question):          <span class="cm">## "current Fed chair?"  → True</span>
-    web_context = <span class="fn">web_search</span>(question)    <span class="cm">## Tavily API call</span>
-
-<span class="kw">if</span> <span class="fn">should_use_rag</span>(question):             <span class="cm">## "what is a bond?"    → True</span>
+      <h3 style="color:var(--accent2)">RAG Pipeline — Two Paths</h3>
+      <pre style="margin-top:8px"><code><span class="cm"># Path 1 — Direct prompt injection (all agents)</span>
+<span class="kw">if</span> <span class="fn">should_use_rag</span>(question):               <span class="cm">## "what is a bond?" → True</span>
     rag_context = <span class="fn">get_rag_context</span>(question, top_k=<span class="num">3</span>, agent_filter=<span class="str">"finance_qa"</span>)
 
-system_prompt = BASE_PROMPT + web_context + rag_context + <span class="fn">f</span><span class="str">"Today is {today}."</span></code></pre>
+<span class="cm"># Path 2 — LangChain ConversationalRetrievalChain (Finance Q&A)</span>
+result = <span class="fn">ask_finance_agent_with_history</span>(question, chat_history)
+<span class="cm"># → {"answer": str, "sources": ["finance-basics", …], "source_documents": […]}</span>
+<span class="cm"># Uses PineconeVectorStore + cosine similarity k=3 + chat history</span>
+
+<span class="cm"># Path 1 is also stacked with Tavily for real-time questions</span>
+<span class="kw">if</span> <span class="fn">is_realtime_query</span>(question):             <span class="cm">## "current Fed chair?" → True</span>
+    web_context = <span class="fn">web_search</span>(question)    <span class="cm">## Tavily API call</span>
+
+system_prompt = BASE_PROMPT + rag_context + web_context + <span class="fn">f</span><span class="str">"Today is {today}."</span></code></pre>
     </div>
   </section>
 
