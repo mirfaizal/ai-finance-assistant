@@ -209,18 +209,25 @@ class RouterAgent(BaseAgent):
 
 AGENT_DESCRIPTIONS: Dict[str, str] = {
     "trading_agent": (
-        "Paper trading only — buy or sell stocks, manage portfolio positions, "
-        "view holdings, view trade history. Triggered by explicit action words: "
+        "Paper trading only — buy or sell stocks, view current positions, check holdings, "
+        "view trade history, check P&L, manage paper portfolio positions. "
+        "Triggered by explicit action words or viewing words related to the user's own trades: "
         "'buy', 'sell', 'purchase', 'add shares', 'remove position', 'trade', "
-        "'execute order', 'place order', 'sell all my', 'show my trades'."
+        "'execute order', 'place order', 'sell all my', 'show my trades', "
+        "'my positions', 'current positions', 'show positions', 'view positions', "
+        "'what do I own', 'my portfolio', 'what are my holdings', 'my p&l', 'paper p&l'."
     ),
     "stock_agent": (
         "Individual stock prices, historical performance, P/E ratios, earnings, "
         "analyst ratings, buy/sell/hold recommendations, comparing two stocks."
     ),
     "portfolio_analysis_agent": (
-        "User's own portfolio: allocation, holdings, rebalancing, concentration risk, "
-        "total value, cost basis, P&L, diversification suggestions."
+        "Deep analysis of the user's own paper-traded portfolio: diversification advice, "
+        "concentration risk, correlation between holdings, rebalancing recommendations, "
+        "sector exposure, and how to improve allocation. The orchestrator automatically "
+        "injects the user's actual SQLite holdings so this agent always sees real positions. "
+        "Use this for 'how should I diversify?', 'am I overexposed?', 'analyse my portfolio', "
+        "'rebalance my portfolio', 'concentration risk', 'asset mix'."
     ),
     "market_analysis_agent": (
         "Broad market conditions, sector performance, indices (S&P 500, Nasdaq, Dow), "
@@ -313,7 +320,7 @@ def route_query_llm(
 # ── Keyword routing table (fallback) ─────────────────────────────────────────
 
 ROUTING_TABLE: Dict[str, List[str]] = {
-    # Trading agent — checked FIRST; explicit buy/sell action words
+    # Trading agent — checked FIRST; explicit buy/sell action words AND position-viewing
     "trading_agent": [
         "buy ",          # "buy 10 AAPL" — trailing space avoids matching "buy-and-hold"
         "sell ",         # "sell 5 TSLA"
@@ -335,6 +342,20 @@ ROUTING_TABLE: Dict[str, List[str]] = {
         "buy more",
         "add to my position",
         "increase my position",
+        # position / holdings viewing — owned by trading_agent since it has the SQLite data
+        "my positions",
+        "my position",
+        "current positions",
+        "current position",
+        "show positions",
+        "view positions",
+        "list positions",
+        "open positions",
+        "what do i own",
+        "what i own",
+        "my paper portfolio",
+        "paper p&l",
+        "my p&l",
     ],
     # Stock agent — single-ticker / specific-stock queries
     "stock_agent": [
@@ -485,10 +506,16 @@ _FORCE_ROUTE: List[tuple] = [
         "execute trade", "paper trade", "paper trading",
         "my trades", "trade history", "trade log",
         "buy more", "add to my position",
+        # position / holdings viewing
         "view my holdings", "show my holdings", "show my current holdings",
         "view my current holdings", "list my holdings",
         "view my positions", "show my positions", "list my positions",
+        "my current positions", "current positions",
+        "my positions", "show positions", "view positions",
         "check my holdings", "check my positions",
+        "what do i own", "what i own",
+        "my paper portfolio", "show my portfolio", "view my portfolio",
+        "paper p&l", "my p&l",
     ]),
 ]
 
