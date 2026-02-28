@@ -46,8 +46,13 @@ aiohttp>=3.9.0
 # Exposes finance tools to Claude Desktop and other MCP clients.
 fastmcp
 
+# ── LangChain RAG chain (ConversationalRetrievalChain via Pinecone) ───────────
+# langchain       : ConversationalRetrievalChain
+# langchain-pinecone: PineconeVectorStore (official LangChain integration)
+langchain>=0.2.0
+langchain-pinecone>=0.2.0
+
 # --- Optional / future modules (commented out until needed) ---
-# langchain>=0.2.0
 # faiss-cpu>=1.7.4
 # chromadb>=0.4.0
 # pandas>=2.0.0
