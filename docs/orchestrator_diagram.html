@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orchestrator Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #58a6ff;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 5px 14px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all .2s;
+        }
+
+        .tab.active,
+        .tab:hover {
+            background: #388bfd22;
+            color: #58a6ff;
+            border-color: #388bfd88;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button {
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #c9d1d9;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        button:hover {
+            background: #30363d;
+        }
+
+        #zoom-label {
+            font-size: 12px;
+            color: #8b949e;
+            min-width: 42px;
+            text-align: center;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .diagram-wrap {
+            overflow: auto;
+            padding: 20px;
+            min-height: calc(100vh - 54px);
+        }
+
+        .diagram-wrap .mermaid {
+            transform-origin: top left;
+            transition: transform .15s;
+            display: inline-block;
+        }
+
+        /* Override Mermaid dark */
+        .mermaid svg {
+            background: transparent !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>🤖 AI Finance Assistant — Orchestrator</h1>
+        <div class="tabs">
+            <div class="tab active" onclick="show(0,this)">Full Flow</div>
+            <div class="tab" onclick="show(1,this)">Buy 5 AAPL Trace</div>
+            <div class="tab" onclick="show(2,this)">Diversify My Portfolio Trace</div>
+            <div class="tab" onclick="show(3,this)">Routing Decision Tree</div>
+        </div>
+        <div class="controls">
+            <button onclick="zoom(-0.15)">−</button>
+            <span id="zoom-label">100%</span>
+            <button onclick="zoom(+0.15)">+</button>
+            <button onclick="fit()">Fit</button>
+        </div>
+    </header>
+
+    <!-- ① Full Flow -->
+    <div class="panel active diagram-wrap" id="p0">
+        <div class="mermaid">
+            flowchart TD
+            USER(["`👤 **User Message**
+            e.g. 'Buy 5 AAPL'`"])
+            API["FastAPI **/ask**
+            POST · session_id"]
+
+            USER --> API
+
+            subgraph ORCH["process_query() — orchestrator.py"]
+            direction TB
+            STORE["**ConversationStore**
+            load history last 12 turns
+            SQLite WAL"]
+            MEM{"Turn count
+            ≥ 5?"}
+            SYNTH["**Memory Synthesizer**
+            compress history → summary
+            save_summary()"]
+            GUARD{"Ambiguous
+            yes/no guard?"}
+            FORCE{"**_force_route()**
+            high-signal keyword
+            e.g. 'buy ', 'my positions'"}
+            LLM["**route_query_llm()**
+            gpt-4.1-mini
+            JSON {agent, confidence}"]
+            KW["**_route_by_keywords()**
+            ROUTING_TABLE fallback"]
+            CTX["**_ctx()**
+            Inject memory_summary
+            + formatted history
+            into prompt"]
+
+            STORE --> MEM
+            MEM -- Yes --> SYNTH --> GUARD
+            MEM -- No --> GUARD
+            GUARD -- Matched --> GOUT["Return guard answer
+            save_turn()"]
+            GUARD -- Pass --> FORCE
+            FORCE -- "Match → trading_agent" --> DISPATCH
+            FORCE -- No match --> LLM
+            LLM -- "confidence ≥ 0.5" --> DISPATCH
+            LLM -- "Failed / low conf" --> KW --> DISPATCH
+            end
+
+            API --> ORCH
+
+            subgraph DISPATCH["Agent Dispatch — dispatch{}"]
+            direction LR
+            PH["**_portfolio_with_holdings()**
+            load SQLite holdings
+            inject into question"]
+            D1["💹 **Trading Agent**
+            ask_trading_agent()
+            ReAct + yfinance tools
+            SQLite buy/sell/positions"]
+            D2["🔬 **Stock Agent**
+            ask_stock_agent()
+            ReAct + yfinance
+            price/fundamentals/PE"]
+            D3["💡 **Finance Q&A Agent**
+            ask_finance_agent()
+            RAG + Tavily search"]
+            D4["📊 **Portfolio Analyst**
+            analyze_portfolio()
+            + SQLite holdings injected"]
+            D5["📈 **Market Analyst**
+            analyze_market()
+            indices / sectors / macro"]
+            D6["🎯 **Goal Planner**
+            plan_goals()
+            retirement / savings"]
+            D7["📰 **News Synthesizer**
+            synthesize_news()
+            Tavily + yfinance news"]
+            D8["🧾 **Tax Educator**
+            explain_tax_concepts()
+            capital gains / IRA / 401k"]
+            end
+
+            DISPATCH --> D1 & D2 & D3 & D4 & D5 & D6 & D7 & D8
+            D4 --> PH
+
+            SAVE["save_turn(sid, question, answer, agent)"]
+            D1 & D2 & D3 & D4 & D5 & D6 & D7 & D8 --> SAVE
+
+            RESP["AskResponse
+            answer · agent · session_id"]
+            SAVE --> RESP --> USER
+        </div>
+    </div>
+
+    <!-- ② Buy 5 AAPL Trace -->
+    <div class="panel diagram-wrap" id="p1">
+        <div class="mermaid">
+            sequenceDiagram
+            actor User
+            participant API as FastAPI /ask
+            participant ORC as process_query()
+            participant CS as ConversationStore (SQLite)
+            participant FR as _force_route()
+            participant TA as Trading Agent (ReAct/LangGraph)
+            participant YF as yfinance tool
+            participant PS as PortfolioStore (SQLite)
+
+            User->>API: POST /ask { question: "Buy 5 AAPL", session_id: "abc-123" }
+            API->>ORC: process_query("Buy 5 AAPL", sid="abc-123")
+
+            ORC->>CS: get_history("abc-123", last_n=12)
+            CS-->>ORC: [{role:user,…}, {role:assistant,…}]
+
+            ORC->>ORC: Memory trigger check (turns < 5) → skip synthesis ORC->>FR: _force_route("buy 5 aapl")
+                Note over FR: "buy " found in _FORCE_ROUTE table → trading_agent
+                FR-->>ORC: "trading_agent"
+
+                ORC->>TA: ask_trading_agent("Buy 5 AAPL", session_id="abc-123")
+
+                loop ReAct loop (LangGraph)
+                TA->>TA: Thought: I need the current AAPL price
+                TA->>YF: get_stock_price("AAPL")
+                YF-->>TA: { price: 228.50 }
+                TA->>TA: Thought: Now execute the buy order
+                TA->>PS: portfolio_store.buy("abc-123", "AAPL", 5, 228.50)
+                PS-->>TA: { ticker:"AAPL", shares:5, avg_cost:228.50 }
+                TA->>TA: Final Answer: Bought 5 shares of AAPL...
+                end
+
+                TA-->>ORC: "✅ Bought 5 shares of AAPL at $228.50/share. Total cost: $1,142.50"
+
+                ORC->>CS: save_turn("abc-123", question, answer, "trading_agent")
+                ORC-->>API: { answer:"…", agent:"trading_agent", session_id:"abc-123" }
+                API-->>User: JSON + badge 💹 Trading Agent
+        </div>
+    </div>
+
+    <!-- ③ Diversify Trace -->
+    <div class="panel diagram-wrap" id="p2">
+        <div class="mermaid">
+            sequenceDiagram
+            actor User
+            participant API as FastAPI /ask
+            participant ORC as process_query()
+            participant LLM as route_query_llm() GPT-4.1-mini
+            participant PH as _portfolio_with_holdings()
+            participant PS as PortfolioStore (SQLite)
+            participant PA as Portfolio Analyst Agent
+
+            User->>API: POST /ask { question: "How should I diversify my portfolio?" }
+            API->>ORC: process_query(question, sid="abc-123")
+
+            ORC->>LLM: question + last 4 history turns
+            Note over LLM: { agent: "portfolio_analysis_agent", confidence: 0.92 }
+            LLM-->>ORC: "portfolio_analysis_agent"
+
+            ORC->>PH: _portfolio_with_holdings(question)
+            PH->>PS: get_holdings("abc-123")
+            PS-->>PH: [{ticker:AAPL, shares:5, avg_cost:228.50},<br />{ticker:TSLA, shares:5, avg_cost:402.51}]
+
+            Note over PH: Enriches question with holdings block:<br />"…\nCurrent paper-portfolio
+            holdings:<br />[{AAPL…}, {TSLA…}]"
+
+            PH->>PA: analyze_portfolio({ assets:[], question: enriched_question })
+
+            PA->>PA: _build_portfolio_prompt():<br />detects SQLite block → personalised path
+            Note over PA: Prompt now says:<br />"You hold AAPL + TSLA — both US large-cap tech.<br />Consider BND
+            (bonds), VEA (international),<br />XLV (healthcare) to reduce concentration risk."
+
+            PA-->>ORC: Personalised advice referencing AAPL & TSLA positions
+
+            ORC->>ORC: save_turn("abc-123", question, answer, "portfolio_analysis_agent")
+            ORC-->>API: { answer:"…", agent:"portfolio_analysis_agent" }
+            API-->>User: JSON + badge 📊 Portfolio Analyst
+        </div>
+    </div>
+
+    <!-- ④ Routing Tree -->
+    <div class="panel diagram-wrap" id="p3">
+        <div class="mermaid">
+            flowchart LR
+            Q([" 💬 User Question "])
+
+            Q --> F1{"⚡ _force_route()
+            high-signal keywords"}
+
+            F1 -- "'buy ', 'sell ', 'purchase '
+            'my positions', 'current positions'
+            'my p&amp;l', 'trade history'" --> TA["💹 Trading Agent
+            ask_trading_agent()
+            ReAct · yfinance · SQLite"]
+
+            F1 -- no match --> L1{"🤖 LLM Router
+            gpt-4.1-mini
+            confidence ≥ 0.5?"}
+
+            L1 -- Yes --> AG{" Chosen Agent "}
+            L1 -- "No / fail" --> KW{"📋 Keyword Fallback
+            ROUTING_TABLE"}
+
+            AG --> A1["💹 Trading Agent"]
+            AG --> A2["🔬 Stock Analyst"]
+            AG --> A3["💡 Finance Q&A"]
+            AG --> A4["📊 Portfolio Analyst"]
+            AG --> A5["📈 Market Analyst"]
+            AG --> A6["🎯 Goal Planner"]
+            AG --> A7["📰 News Synthesizer"]
+            AG --> A8["🧾 Tax Educator"]
+
+            KW -- "'buy ', 'sell ', 'my positions'
+            'paper trade', 'my trades'" --> B1["💹 Trading Agent"]
+            KW -- "'stock price', 'pe ratio'
+            'eps', 'analyst rating'" --> B2["🔬 Stock Analyst"]
+            KW -- "'portfolio', 'diversif'
+            'allocation', 'rebalance'" --> B4["📊 Portfolio Analyst"]
+            KW -- "'news', 'headline'
+            'summarize', 'earnings report'" --> B7["📰 News Synthesizer"]
+            KW -- "'market', 's&amp;p', 'nasdaq'
+            'vix', 'macro'" --> B5["📈 Market Analyst"]
+            KW -- "'goal', 'retire'
+            'budget', 'savings'" --> B6["🎯 Goal Planner"]
+            KW -- "'tax', 'roth'
+            'capital gains', '401k'" --> B8["🧾 Tax Educator"]
+            KW -- default --> B3["💡 Finance Q&A"]
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#1f2937',
+                primaryTextColor: '#e6edf3',
+                primaryBorderColor: '#388bfd',
+                lineColor: '#58a6ff',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#0d1117',
+                background: '#0d1117',
+                mainBkg: '#161b22',
+                nodeBorder: '#388bfd',
+                clusterBkg: '#1c2128',
+                titleColor: '#58a6ff',
+                edgeLabelBackground: '#1c2128',
+                actorBkg: '#1c2128',
+                actorBorder: '#388bfd',
+                actorTextColor: '#e6edf3',
+                noteBkg: '#2d333b',
+                noteTextColor: '#e6edf3',
+                activationBkgColor: '#1f2937',
+                sequenceNumberColor: '#58a6ff',
+            },
+            flowchart: { useMaxWidth: false, htmlLabels: true },
+            sequence: { useMaxWidth: false }
+        });
+
+        let scale = 1.0;
+
+        function getActiveDiagram() {
+            const panel = document.querySelector('.panel.active .diagram-wrap') ||
+                document.querySelector('.panel.active');
+            return panel ? panel.querySelector('.mermaid') : null;
+        }
+
+        function applyScale() {
+            document.querySelectorAll('.mermaid').forEach(el => {
+                el.style.transform = `scale(${scale})`;
+            });
+            document.getElementById('zoom-label').textContent = Math.round(scale * 100) + '%';
+        }
+
+        function zoom(delta) {
+            scale = Math.max(0.2, Math.min(3.0, scale + delta));
+            applyScale();
+        }
+
+        function fit() {
+            const panel = document.querySelector('.panel.active');
+            if (!panel) return;
+            const el = panel.querySelector('.mermaid svg');
+            if (!el) return;
+            const svgW = el.viewBox?.baseVal?.width || el.getBoundingClientRect().width;
+            const avail = panel.clientWidth - 40;
+            scale = Math.min(1, avail / svgW);
+            applyScale();
+        }
+
+        function show(idx, tab) {
+            document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            scale = 1.0;
+            applyScale();
+        }
+    </script>
+</body>
+
+</html>
