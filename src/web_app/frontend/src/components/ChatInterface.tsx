@@ -45,6 +45,12 @@ const AGENT_SUGGESTIONS = [
         color: '#f97316',
         examples: ['What is AAPL trading at right now?', 'Compare NVDA vs AMD fundamentals', 'Is TSLA overvalued?'],
     },
+    {
+        icon: '💹',
+        label: 'Trading Agent',
+        color: '#22d3ee',
+        examples: ['Buy 5 shares of AAPL', 'Sell 2 TSLA', 'Show my current positions', 'What is my paper trading P&L?'],
+    },
 ];
 import { MessageBubble } from './MessageBubble';
 import { AgentBadge } from './AgentBadge';
@@ -210,6 +216,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
                             <span style={{ color: '#10b981' }}>🎯 Goal Planner</span>
                             <span style={{ color: '#ec4899' }}>📰 News Synthesizer</span>
                             <span style={{ color: '#f97316' }}>🔬 Stock Analyst</span>
+                            <span style={{ color: '#22d3ee' }}>💹 Trading Agent</span>
                         </div>
                         <p className="empty-hint">The right agent is automatically selected based on your question.</p>
                     </motion.div>
