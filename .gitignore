@@ -48,3 +48,12 @@ dist/
 *.swo
 .DS_Store
 Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+
+# ── Ad-hoc test / scratch scripts ────────────────────────────────────────────
+test_langsmith.py
+test_system.py
+
+
