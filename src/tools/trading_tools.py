@@ -32,12 +32,37 @@ from src.memory.portfolio_store import PortfolioStore
 # ── Low-level yfinance price fetch ────────────────────────────────────────────
 
 def _live_price(ticker: str) -> float:
-    """Fetch the latest market price for *ticker* via yfinance.  No API key required."""
+    """Fetch the latest market price for *ticker* via yfinance with fallbacks."""
     tk = yf.Ticker(ticker.upper())
-    price = tk.fast_info.last_price
-    if not price:
-        raise ValueError(f"Could not fetch live price for '{ticker}'. Verify the ticker symbol.")
-    return float(price)
+
+    # Method 1: fast_info
+    try:
+        price = tk.fast_info.last_price
+        if price is not None and price > 0:
+            return float(price)
+    except Exception:
+        pass
+
+    # Method 2: info dict
+    try:
+        info = tk.info
+        price = info.get("regularMarketPrice") or info.get("currentPrice")
+        if price is not None and price > 0:
+            return float(price)
+    except Exception:
+        pass
+
+    # Method 3: history
+    try:
+        hist = tk.history(period="1d")
+        if not hist.empty and "Close" in hist.columns:
+            price = hist["Close"].iloc[-1]
+            if price is not None and price > 0:
+                return float(price)
+    except Exception:
+        pass
+
+    raise ValueError(f"Could not fetch live price for '{ticker}' due to API rate limits. Please try again later.")
 
 
 # ── Session-bound tool factory ────────────────────────────────────────────────
