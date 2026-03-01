@@ -491,6 +491,8 @@ def process_query(
             store.save_summary(sid, memory_summary)
             history = store.get_history(sid, last_n=6)
         except Exception:
+            # If memory synthesis fails, we can still proceed with the full history (albeit less efficiently)            
+            logging.getLogger("orchestrator").exception("Memory synthesis failed to compress history for session %s", sid)
             pass  # non-fatal
 
     # ── Ambiguous yes/no guard (runs before routing) ────────────────────────────

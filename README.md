@@ -1,3 +1,13 @@
+---
+title: AI Finance Assistant
+emoji: 💹
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
 # AI Finance Assistant
 
 A **production-ready, truly agentic AI system** for financial education, built with OpenAI (GPT-4.1), LangGraph `create_react_agent`, FastAPI, SQLite conversation memory, and a React/TypeScript live-data dashboard.

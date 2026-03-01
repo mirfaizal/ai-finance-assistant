@@ -1,13 +1,18 @@
 import os
+from dotenv import load_dotenv
 from langsmith import Client
 
-# Set LANGCHAIN_API_KEY and LANGSMITH_WORKSPACE_ID in your environment or .env file
-# export LANGCHAIN_API_KEY=lsv2_pt_...
-# export LANGSMITH_WORKSPACE_ID=...
+load_dotenv()  # loads keys from .env — never hardcode secrets
+
+api_key = os.environ.get("LANGCHAIN_API_KEY")
+if not api_key:
+    raise EnvironmentError("LANGCHAIN_API_KEY is not set. Add it to .env or export it.")
 
 client = Client()
 try:
-    client.create_project("test_connection", description="Testing API Key")
-    print("SUCCESS: Connection worked!")
+    projects = list(client.list_projects())
+    print(f"SUCCESS: Connected to LangSmith. Found {len(projects)} project(s).")
+    for p in projects:
+        print(f"  - {p.name}")
 except Exception as e:
     print(f"FAILED: {e}")

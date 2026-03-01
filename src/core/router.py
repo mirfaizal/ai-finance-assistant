@@ -525,6 +525,7 @@ def _force_route(question: str) -> Optional[str]:
     q = question.lower()
     for agent_name, keywords in _FORCE_ROUTE:
         if any(kw in q for kw in keywords):
+            logging.getLogger("router").info("Force-routing '%s...' to %s based on high-confidence keywords", question[:40], agent_name)
             return agent_name
     return None
 
@@ -554,7 +555,7 @@ def route_query(
     # Step 1: hard-coded high-signal overrides (no LLM latency needed)
     forced = _force_route(question)
     if forced:
-        _router_logger.info("Force-routed '%s...' to %s", question[:40], forced)
+        logging.getLogger("router").info("Force-routed '%s...' to %s", question[:40], forced)
         return forced
 
     # Step 2: LLM routing
