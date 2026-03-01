@@ -33,5 +33,9 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
         logger.addHandler(handler)
         logger.propagate = False
 
+    # Squelch noisy third-party background thread errors when quotas are hit
+    logging.getLogger("langsmith").setLevel(logging.CRITICAL)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     logger.setLevel(level)
     return logger
