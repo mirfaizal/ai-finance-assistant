@@ -7,6 +7,7 @@ export interface AskResponse {
   answer: string;
   agent: string;
   session_id: string;  // backend UUID, persisted so future turns keep context
+  run_id?: string;
 }
 
 export interface HistoryMessage {
@@ -44,6 +45,26 @@ export async function askQuestion(
   }
 
   return res.json() as Promise<AskResponse>;
+}
+
+/**
+ * Send feedback for an AI response back to LangSmith.
+ * @param runId The LangSmith trace / run UUID.
+ * @param score 1 for Thumbs Up, 0 for Thumbs Down.
+ */
+export async function sendFeedback(runId: string, score: number): Promise<{status: string}> {
+  const res = await fetch(`${BASE_URL}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ run_id: runId, score }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Backend error ${res.status}: ${errBody}`);
+  }
+
+  return res.json() as Promise<{status: string}>;
 }
 
 /**

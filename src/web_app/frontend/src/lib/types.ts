@@ -15,6 +15,7 @@ export interface Message {
   content: string;
   agent?: AgentType;
   timestamp: number;
+  run_id?: string;
 }
 
 export interface ChatSession {

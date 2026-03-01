@@ -162,6 +162,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
                 content: res.answer,
                 agent: confirmedAgent,
                 timestamp: Date.now(),
+                run_id: res.run_id,
             };
             setMessages((prev) => [...prev, aiMsg]);
             appendMessage(sessionId, aiMsg);

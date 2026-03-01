@@ -499,7 +499,7 @@ def process_query(
     guard_response = check_ambiguous_yes_no_guard(question, history)
     if guard_response is not None:
         store.save_turn(sid, question, guard_response, "guard")
-        return {"answer": guard_response, "agent": "guard", "session_id": sid}
+        return {"answer": guard_response, "agent": "guard", "session_id": sid, "run_id": None}
 
     # ── LLM routing with conversation context ─────────────────────────────────
     agent_name = route_query(question, history=history, use_llm=True)
@@ -549,7 +549,7 @@ def process_query(
 
         store.save_turn(sid, question, answer, agent_name)
 
-        log_run(
+        run_id = log_run(
             name="process_query",
             inputs={"question": question, "routed_to": agent_name, "session_id": sid},
             outputs={"answer": answer[:200]},
@@ -562,7 +562,8 @@ def process_query(
             answer = ask_finance_agent(question)
             agent_name = "finance_qa_agent"
             store.save_turn(sid, question, answer, agent_name)
+            run_id = None
         except Exception:
             raise exc
 
-    return {"answer": answer, "agent": agent_name, "session_id": sid}
+    return {"answer": answer, "agent": agent_name, "session_id": sid, "run_id": run_id}

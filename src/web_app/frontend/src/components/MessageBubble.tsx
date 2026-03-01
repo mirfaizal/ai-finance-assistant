@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ThumbsUp, ThumbsDown, CheckCircle } from 'lucide-react';
 import { getAgent } from '../lib/agentEngine';
+import { sendFeedback } from '../lib/api';
 import type { Message } from '../lib/types';
 
 interface MessageBubbleProps {
@@ -9,10 +12,24 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+    const [feedbackState, setFeedbackState] = useState<'none' | 'loading' | 'success' | 'error'>('none');
     const isUser = message.role === 'user';
     const agent = message.agent ? getAgent(message.agent) : null;
     const agentColor = agent?.color ?? '#14b8a6';
     const agentLabel = agent?.title ?? 'Finnie';
+
+    const handleFeedback = async (score: number) => {
+        if (!message.run_id || feedbackState !== 'none') return;
+        setFeedbackState('loading');
+        try {
+            await sendFeedback(message.run_id, score);
+            setFeedbackState('success');
+        } catch (err) {
+            console.error('Failed to send feedback', err);
+            setFeedbackState('error');
+            setTimeout(() => setFeedbackState('none'), 3000);
+        }
+    };
 
     return (
         <motion.div
@@ -49,6 +66,40 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         >
                             {message.content}
                         </ReactMarkdown>
+                    </div>
+                )}
+
+                {!isUser && message.run_id && (
+                    <div className="msg-feedback" style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+                        {feedbackState === 'none' || feedbackState === 'error' ? (
+                            <>
+                                <button
+                                    onClick={() => handleFeedback(1)}
+                                    title="Helpful"
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '4px', borderRadius: '4px' }}
+                                    onMouseOver={(e) => e.currentTarget.style.color = agentColor}
+                                    onMouseOut={(e) => e.currentTarget.style.color = '#9ca3af'}
+                                >
+                                    <ThumbsUp size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleFeedback(0)}
+                                    title="Not helpful"
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: '4px', borderRadius: '4px' }}
+                                    onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                                    onMouseOut={(e) => e.currentTarget.style.color = '#9ca3af'}
+                                >
+                                    <ThumbsDown size={14} />
+                                </button>
+                                {feedbackState === 'error' && <span style={{ fontSize: '11px', color: '#ef4444' }}>Error sending</span>}
+                            </>
+                        ) : feedbackState === 'loading' ? (
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Sending feedback...</span>
+                        ) : (
+                            <span style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle size={12} /> Thank you!
+                            </span>
+                        )}
                     </div>
                 )}
 

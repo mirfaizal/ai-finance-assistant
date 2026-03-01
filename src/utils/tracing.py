@@ -141,7 +141,7 @@ def log_run(
     run_type: str = "chain",
     tags: list[str] | None = None,
     error: str | None = None,
-) -> None:
+) -> str | None:
     """
     Manually log a single run to LangSmith without using the decorator.
 
@@ -161,10 +161,15 @@ def log_run(
         Optional tags.
     error : str | None
         Error message if the run failed.
+        
+    Returns
+    -------
+    str | None
+        The UUID of the run if tracing is enabled, otherwise None.
     """
     client = get_langsmith_client()
     if client is None:
-        return
+        return None
     try:
         import uuid
         from datetime import datetime, timezone
@@ -186,5 +191,7 @@ def log_run(
             error=error,
         )
         logger.debug("LangSmith: logged run '%s'", name)
+        return str(run_id)
     except Exception as exc:
         logger.debug("LangSmith log_run failed silently: %s", exc)
+        return None

@@ -72,6 +72,7 @@ class AskResponse(BaseModel):
     answer: str
     agent: str
     session_id: str   # always returned so the client can continue the session
+    run_id: Optional[str] = None
 
 
 class HistoryMessage(BaseModel):
@@ -119,6 +120,7 @@ def ask(request: AskRequest) -> AskResponse:
             answer=result["answer"],
             agent=result["agent"],
             session_id=result["session_id"],
+            run_id=result.get("run_id"),
         )
     except Exception as exc:
         logger.error("Error processing question: %s", exc, exc_info=True)
@@ -141,6 +143,33 @@ def get_history(session_id: str, last_n: int = 20) -> HistoryResponse:
         session_id=session_id,
         messages=[HistoryMessage(**m) for m in messages],
     )
+
+
+class FeedbackRequest(BaseModel):
+    run_id: str
+    score: int  # 1 for positive, 0 for negative
+
+@app.post("/feedback", summary="Submit user feedback for an AI response")
+def submit_feedback(request: FeedbackRequest) -> dict:
+    """
+    Submit thumbs up/down feedback to LangSmith for a particular run_id.
+    """
+    from src.utils.tracing import get_langsmith_client
+    
+    client = get_langsmith_client()
+    if client is None:
+         return {"status": "skipped", "message": "Tracing is not enabled."}
+         
+    try:
+        client.create_feedback(
+            run_id=request.run_id,
+            key="user_score",
+            score=request.score
+        )
+        return {"status": "success"}
+    except Exception as exc:
+        logger.error("Error submitting feedback: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/sessions", summary="List all session IDs")
