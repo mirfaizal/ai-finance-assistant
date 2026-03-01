@@ -27,7 +27,17 @@ export function getHoldings(): Holding[] {
 }
 
 export function saveHoldings(holdings: Holding[]): void {
-  localStorage.setItem(HOLDINGS_KEY, JSON.stringify(holdings));
+  const currentStr = localStorage.getItem(HOLDINGS_KEY);
+  
+  // Sort holdings by ticker to ensure stable stringification
+  const sortedHoldings = [...holdings].sort((a, b) => a.ticker.localeCompare(b.ticker));
+  const newStr = JSON.stringify(sortedHoldings);
+
+  if (currentStr === newStr) {
+    return; // Fast path: skip unnecessary writes and dispatch loops
+  }
+
+  localStorage.setItem(HOLDINGS_KEY, newStr);
   // Notify same-tab listeners (PortfolioChart) that holdings changed
   window.dispatchEvent(new CustomEvent('portfolioUpdated'));
 }
