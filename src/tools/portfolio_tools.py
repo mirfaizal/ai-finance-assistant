@@ -27,20 +27,32 @@ def _safe_float(val) -> Optional[float]:
         return None
 
 
+# Global in-memory cache for company names to prevent redundant yfinance API calls
+_COMPANY_NAME_CACHE: dict[str, str] = {}
+
 def _fetch_company_name(ticker: str, retries: int = 3, backoff: float = 2.0) -> str:
     """Fetch longName for *ticker* with exponential-backoff retry on rate-limit errors."""
+    ticker_upper = ticker.upper()
+
+    # 1. Return from cache if we already fetched it this server session
+    if ticker_upper in _COMPANY_NAME_CACHE:
+        return _COMPANY_NAME_CACHE[ticker_upper]
+
+    # 2. Otherwise fetch from yfinance
     for attempt in range(retries):
         try:
-            info = yf.Ticker(ticker).info
-            return info.get("longName", ticker)
+            info = yf.Ticker(ticker_upper).info
+            name = info.get("longName", ticker_upper)
+            _COMPANY_NAME_CACHE[ticker_upper] = name
+            return name
         except Exception as exc:
             msg = str(exc).lower()
             if "too many requests" in msg or "rate limit" in msg or "429" in msg:
                 if attempt < retries - 1:
                     time.sleep(backoff * (2 ** attempt))
                     continue
-            return ticker  # non-rate-limit error or retries exhausted
-    return ticker
+            return ticker_upper  # non-rate-limit error or retries exhausted
+    return ticker_upper
 
 
 @tool
@@ -99,8 +111,15 @@ def analyze_portfolio(holdings_json: str) -> str:
             price     = prices.get(ticker, 0.0)
 
             # Only hit tk.info (expensive) when we have a valid price
-            company = _fetch_company_name(ticker) if price else ticker
-            time.sleep(0.25)  # small inter-request throttle
+            if price:
+                is_cached = ticker.upper() in _COMPANY_NAME_CACHE
+                company = _fetch_company_name(ticker)
+                
+                # Only throttle if we actually made a network request
+                if not is_cached:
+                    time.sleep(0.25)
+            else:
+                company = ticker
 
             current_value = price * shares
             cost_basis    = avg_cost * shares
