@@ -10,6 +10,7 @@ PORTFOLIO_TOOLS = [analyze_portfolio, get_portfolio_performance, get_stock_quote
 from __future__ import annotations
 
 import json
+import time
 from typing import Optional
 
 import yfinance as yf
@@ -24,6 +25,22 @@ def _safe_float(val) -> Optional[float]:
         return float(val)
     except (TypeError, ValueError):
         return None
+
+
+def _fetch_company_name(ticker: str, retries: int = 3, backoff: float = 2.0) -> str:
+    """Fetch longName for *ticker* with exponential-backoff retry on rate-limit errors."""
+    for attempt in range(retries):
+        try:
+            info = yf.Ticker(ticker).info
+            return info.get("longName", ticker)
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "too many requests" in msg or "rate limit" in msg or "429" in msg:
+                if attempt < retries - 1:
+                    time.sleep(backoff * (2 ** attempt))
+                    continue
+            return ticker  # non-rate-limit error or retries exhausted
+    return ticker
 
 
 @tool
@@ -41,6 +58,36 @@ def analyze_portfolio(holdings_json: str) -> str:
         if not holdings:
             return json.dumps({"error": "Empty portfolio"})
 
+        tickers = [h["ticker"].upper() for h in holdings]
+
+        # ── Batch-fetch latest close prices in a single API call ──────────────
+        # Using period="5d" so we always get at least one trading day even on
+        # weekends/holidays; we take the last available close.
+        prices: dict[str, float] = {}
+        try:
+            raw = yf.download(
+                tickers,
+                period="5d",
+                auto_adjust=True,
+                progress=False,
+                threads=True,
+            )
+            close = raw["Close"] if "Close" in raw.columns else raw.xs("Close", axis=1, level=0)
+            last_row = close.ffill().iloc[-1]
+            for tk_sym in tickers:
+                val = _safe_float(last_row.get(tk_sym))
+                prices[tk_sym] = val if val else 0.0
+        except Exception:
+            # Fallback: individual fast_info calls (slower, but resilient)
+            for tk_sym in tickers:
+                try:
+                    prices[tk_sym] = _safe_float(yf.Ticker(tk_sym).fast_info.last_price) or 0.0
+                except Exception:
+                    prices[tk_sym] = 0.0
+                time.sleep(0.3)  # throttle individual calls
+
+        # ── Per-holding metadata (company names) ─────────────────────────────
+        # Spread requests with a small delay to avoid rate-limiting.
         rows = []
         total_cost = 0.0
         total_value = 0.0
@@ -49,10 +96,11 @@ def analyze_portfolio(holdings_json: str) -> str:
             ticker    = h["ticker"].upper()
             shares    = float(h["shares"])
             avg_cost  = float(h.get("avg_cost", 0))
+            price     = prices.get(ticker, 0.0)
 
-            tk = yf.Ticker(ticker)
-            price   = _safe_float(tk.fast_info.last_price) or 0.0
-            company = tk.info.get("longName", ticker) if price else ticker
+            # Only hit tk.info (expensive) when we have a valid price
+            company = _fetch_company_name(ticker) if price else ticker
+            time.sleep(0.25)  # small inter-request throttle
 
             current_value = price * shares
             cost_basis    = avg_cost * shares
