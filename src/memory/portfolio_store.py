@@ -209,6 +209,15 @@ class PortfolioStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_all_holdings(self) -> List[Dict]:
+        """Return combined holdings across all sessions."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT ticker, SUM(shares) as shares, SUM(avg_cost * shares) / SUM(shares) as avg_cost "
+                "FROM holdings GROUP BY ticker HAVING SUM(shares) > 0"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_trades(self, session_id: str, last_n: int = 50) -> List[Dict]:
         """Return the most recent *last_n* trades for a session."""
         with self._connect() as conn:

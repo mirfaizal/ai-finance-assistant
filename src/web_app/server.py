@@ -414,7 +414,7 @@ def portfolio_summary(session_id: str) -> dict:
     import json
     from src.tools.portfolio_tools import analyze_portfolio  # type: ignore[attr-defined]
 
-    holdings = _portfolio_store.get_holdings(session_id)
+    holdings = _portfolio_store.get_all_holdings()
     if not holdings:
         return {
             "session_id": session_id,
