@@ -20,6 +20,7 @@ from src.memory.quiz_store import QuizStore
 from uuid import uuid4
 import json
 import os
+from src.tools.trading_tools import _get_yf_session
 
 # Quiz store (SQLite-backed)
 _quiz_store = QuizStore()
@@ -213,6 +214,7 @@ def market_chart() -> list:
             interval="1mo",
             auto_adjust=True,
             progress=False,
+            session=_get_yf_session(),
         )["Close"]
 
         # Normalise column access (single vs multi-ticker)
@@ -252,7 +254,7 @@ def market_quotes(symbols: str = "SPY,AAPL,TSLA,NVDA,BTC-USD") -> dict:
         if not sym:
             continue
         try:
-            tk = yf.Ticker(sym)
+            tk = yf.Ticker(sym, session=_get_yf_session())
             fast = tk.fast_info
             price = float(fast.last_price or 0)
             prev  = float(fast.previous_close or 0)
@@ -390,7 +392,7 @@ def paper_buy(session_id: str, request: BuyRequest) -> dict:
     """
     import yfinance as yf
     try:
-        tk = yf.Ticker(request.ticker.upper())
+        tk = yf.Ticker(request.ticker.upper(), session=_get_yf_session())
         price = float(tk.fast_info.last_price or 0)
         if price <= 0:
             raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
@@ -414,7 +416,7 @@ def paper_sell(session_id: str, request: SellRequest) -> dict:
     """
     import yfinance as yf
     try:
-        tk = yf.Ticker(request.ticker.upper())
+        tk = yf.Ticker(request.ticker.upper(), session=_get_yf_session())
         price = float(tk.fast_info.last_price or 0)
         if price <= 0:
             raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
@@ -497,7 +499,7 @@ def market_news(tickers: str = "SPY,AAPL,MSFT,NVDA,TSLA", limit: int = 15) -> di
         if not sym:
             continue
         try:
-            tk = yf.Ticker(sym)
+            tk = yf.Ticker(sym, session=_get_yf_session())
             for item in (tk.news or []):
                 # New yfinance format wraps everything under "content"
                 content = item.get("content") or {}

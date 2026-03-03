@@ -29,11 +29,22 @@ from langchain_core.tools import tool
 from src.memory.portfolio_store import PortfolioStore
 
 
+import requests
+
 # ── Low-level yfinance price fetch ────────────────────────────────────────────
+
+def _get_yf_session() -> requests.Session:
+    """Create a requests session with a standard browser User-Agent to bypass rate limits."""
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    return session
 
 def _live_price(ticker: str) -> float:
     """Fetch the latest market price for *ticker* via yfinance with fallbacks."""
-    tk = yf.Ticker(ticker.upper())
+    session = _get_yf_session()
+    tk = yf.Ticker(ticker.upper(), session=session)
 
     # Method 1: fast_info
     try:

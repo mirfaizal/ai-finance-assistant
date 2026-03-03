@@ -80,7 +80,8 @@ def get_stock_news(ticker: str, max_items: int = 8) -> str:
     """
     try:
         import yfinance as yf
-        tk = yf.Ticker(ticker.upper().strip())
+        from src.tools.trading_tools import _get_yf_session
+        tk = yf.Ticker(ticker.upper().strip(), session=_get_yf_session())
         raw_news = tk.news or []
 
         articles: list[dict] = []

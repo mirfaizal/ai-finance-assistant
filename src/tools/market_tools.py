@@ -16,6 +16,7 @@ import yfinance as yf
 from langchain_core.tools import tool
 
 from src.tools.stock_tools import get_stock_history
+from src.tools.trading_tools import _get_yf_session
 
 
 def _safe_float(val) -> Optional[float]:
@@ -48,7 +49,7 @@ def get_market_overview() -> str:
     result: dict = {}
     for sym, name in tickers.items():
         try:
-            tk = yf.Ticker(sym)
+            tk = yf.Ticker(sym, session=_get_yf_session())
             fast   = tk.fast_info
             price  = _safe_float(fast.last_price)
             prev   = _safe_float(fast.previous_close)
@@ -87,7 +88,7 @@ def get_sector_performance(period: str = "1mo") -> str:
     }
     try:
         data = yf.download(
-            list(sector_etfs.keys()), period=period, auto_adjust=True, progress=False
+            list(sector_etfs.keys()), period=period, auto_adjust=True, progress=False, session=_get_yf_session()
         )["Close"]
         results: dict = {}
         for sym, sector in sector_etfs.items():
