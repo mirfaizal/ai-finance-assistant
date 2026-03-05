@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { MessageSquare, BookOpen, ArrowRight, TrendingUp, PieChart } from 'lucide-react';
 import {
   DASHBOARD_METRICS,
@@ -21,6 +22,7 @@ interface LiveMetrics {
 }
 
 export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
+  const { user } = useAuth0();
   const m = DASHBOARD_METRICS;
   const [live, setLive] = useState<LiveMetrics | null>(null);
   const [portfolioLoaded, setPortfolioLoaded] = useState(false);
@@ -60,7 +62,7 @@ export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
         <div className="hero-glow" />
         <div className="dashboard-hero-top">
           <div>
-            <h1>Welcome back, User</h1>
+            <h1>Welcome back, {user?.name || user?.email || 'User'}</h1>
             <p>Here&apos;s your financial snapshot for today.</p>
           </div>
           <button className="hero-cta" onClick={() => onStartChat()}>

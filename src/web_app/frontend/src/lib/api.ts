@@ -2,22 +2,32 @@ import { BASE_URL } from './config';
 
 // Global token fetcher injected by the Auth0Provider React layer
 let _getAccessToken: (() => Promise<string | undefined>) | null = null;
+let _userEmail: string | undefined = undefined;
 
 export function setAccessTokenFetcher(fetcher: () => Promise<string | undefined>) {
   _getAccessToken = fetcher;
 }
 
+export function setUserEmail(email: string | undefined) {
+  _userEmail = email;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  if (!_getAccessToken) return {};
-  try {
-    const token = await _getAccessToken();
-    if (token) {
-      return { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
+  if (_getAccessToken) {
+    try {
+      const token = await _getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (err) {
+      console.warn("Failed to get Auth0 access token", err);
     }
-  } catch (err) {
-    console.warn("Failed to get Auth0 access token", err);
   }
-  return {};
+  if (_userEmail) {
+    headers['X-User-Email'] = _userEmail;
+  }
+  return headers;
 }// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface AskResponse {
@@ -55,7 +65,7 @@ export async function askQuestion(
   const res = await fetch(`${BASE_URL}/ask`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, session_id: sessionId ?? undefined }),
+    body: JSON.stringify({ question, session_id: sessionId ?? undefined, user_email: _userEmail }),
   });
 
   if (!res.ok) {

@@ -441,6 +441,7 @@ def process_query(
     session_id: Optional[str] = None,
     history: Optional[List] = None,
     memory_summary: Optional[str] = None,
+    user_email: Optional[str] = None,
 ) -> dict:
     """
     Route *question* to the correct agent and return its answer.
@@ -517,9 +518,11 @@ def process_query(
     common = {"history": history, "memory_summary": memory_summary}
 
     # ── Portfolio helper: inject SQLite holdings when available ────────────────
+    portfolio_id = user_email if user_email else sid
+
     def _portfolio_with_holdings(question_text: str) -> str:
         """Enhance portfolio question with live SQLite holdings if they exist."""
-        holdings = portfolio_store.get_holdings(sid)
+        holdings = portfolio_store.get_holdings(portfolio_id)
         if holdings:
             import json as _json
             holdings_str = _json.dumps(holdings)
@@ -532,7 +535,7 @@ def process_query(
         return analyze_portfolio({"assets": [], "question": _ctx(enriched)})
 
     dispatch = {
-        "trading_agent":            lambda: ask_trading_agent(question, session_id=sid, **common),
+        "trading_agent":            lambda: ask_trading_agent(question, session_id=portfolio_id, **common),
         "stock_agent":              lambda: ask_stock_agent(question, **common),
         "finance_qa_agent":         lambda: ask_finance_agent(_ctx(question)),
         "portfolio_analysis_agent": lambda: _portfolio_with_holdings(question),

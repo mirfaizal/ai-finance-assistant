@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from src.workflow.orchestrator import process_query
 from src.memory.conversation_store import ConversationStore
 from src.web_app.auth import verify_token
@@ -57,6 +58,7 @@ _portfolio_store = PortfolioStore()
 class AskRequest(BaseModel):
     question: str
     session_id: Optional[str] = None  # omit to start a new session
+    user_email: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -118,7 +120,7 @@ def ask(request: AskRequest, current_user: str = Depends(verify_token)) -> AskRe
     
     logger.info("POST /ask  question=%s  session=%s", question[:80], session_id)
     try:
-        result = process_query(question, session_id=session_id)
+        result = process_query(question, session_id=session_id, user_email=request.user_email)
         return AskResponse(
             question=question,
             answer=result["answer"],
@@ -334,14 +336,15 @@ class TradeRequest(BaseModel):
 
 
 @app.post("/portfolio/trade", summary="Execute a paper trade")
-def submit_trade(trade: TradeRequest, current_user: str = Depends(verify_token)) -> dict:
+def submit_trade(trade: TradeRequest, x_user_email: Optional[str] = Header(None), current_user: str = Depends(verify_token)) -> dict:
     """
     Execute a paper trade (buy or sell) for a given session.
     """
+    target_session = x_user_email or trade.session_id
     if trade.action.lower() == "buy":
-        return paper_buy(trade.session_id, BuyRequest(ticker=trade.ticker, shares=trade.shares))
+        return paper_buy(target_session, BuyRequest(ticker=trade.ticker, shares=trade.shares), x_user_email=x_user_email)
     elif trade.action.lower() == "sell":
-        return paper_sell(trade.session_id, SellRequest(ticker=trade.ticker, shares=trade.shares))
+        return paper_sell(target_session, SellRequest(ticker=trade.ticker, shares=trade.shares), x_user_email=x_user_email)
     else:
         raise HTTPException(status_code=400, detail="Invalid trade action. Must be 'buy' or 'sell'.")
 
@@ -410,33 +413,35 @@ class SellRequest(BaseModel):
     "/portfolio/holdings/{session_id}",
     summary="Get paper-portfolio holdings for a session",
 )
-def get_holdings(session_id: str, current_user: str = Depends(verify_token)) -> dict:
+def get_holdings(session_id: str, x_user_email: Optional[str] = Header(None), current_user: str = Depends(verify_token)) -> dict:
     """
     Return all current paper-trading holdings for *session_id* as stored
     in SQLite.  Includes ticker, shares, average cost, and last-updated time.
     """
-    holdings = _portfolio_store.get_holdings(session_id)
-    return {"session_id": session_id, "holdings": holdings, "count": len(holdings)}
+    target_session = x_user_email or session_id
+    holdings = _portfolio_store.get_holdings(target_session)
+    return {"session_id": target_session, "holdings": holdings, "count": len(holdings)}
 
 
 @app.get(
     "/portfolio/trades/{session_id}",
     summary="Get paper-trade history for a session",
 )
-def get_trades(session_id: str, last_n: int = 50) -> dict:
+def get_trades(session_id: str, last_n: int = 50, x_user_email: Optional[str] = Header(None)) -> dict:
     """
     Return the most recent *last_n* paper trades for *session_id* (default 50).
     Each row: id, ticker, action, shares, price, total_value, timestamp.
     """
-    trades = _portfolio_store.get_trades(session_id, last_n=last_n)
-    return {"session_id": session_id, "trades": trades, "count": len(trades)}
+    target_session = x_user_email or session_id
+    trades = _portfolio_store.get_trades(target_session, last_n=last_n)
+    return {"session_id": target_session, "trades": trades, "count": len(trades)}
 
 
 @app.post(
     "/portfolio/buy/{session_id}",
     summary="Paper-buy shares at live market price",
 )
-def paper_buy(session_id: str, request: BuyRequest) -> dict:
+def paper_buy(session_id: str, request: BuyRequest, x_user_email: Optional[str] = Header(None)) -> dict:
     """
     Paper-buy *shares* of *ticker* at the current live yfinance price.
     Updates the session's holdings in SQLite (weighted avg cost).
@@ -444,13 +449,14 @@ def paper_buy(session_id: str, request: BuyRequest) -> dict:
     This endpoint is a REST shortcut; the Trading Agent also executes buys
     automatically when the user types "buy 10 AAPL" in the chat.
     """
+    target_session = x_user_email or session_id
     import yfinance as yf
     try:
         tk = yf.Ticker(request.ticker.upper())
         price = float(tk.fast_info.last_price or 0)
         if price <= 0:
             raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
-        result = _portfolio_store.buy(session_id, request.ticker, request.shares, price)
+        result = _portfolio_store.buy(target_session, request.ticker, request.shares, price)
         return result
     except HTTPException:
         raise
@@ -463,18 +469,19 @@ def paper_buy(session_id: str, request: BuyRequest) -> dict:
     "/portfolio/sell/{session_id}",
     summary="Paper-sell shares at live market price",
 )
-def paper_sell(session_id: str, request: SellRequest) -> dict:
+def paper_sell(session_id: str, request: SellRequest, x_user_email: Optional[str] = Header(None)) -> dict:
     """
     Paper-sell *shares* of *ticker* at the current live yfinance price.
     Reduces the session's holdings in SQLite.  Returns 422 if insufficient shares.
     """
+    target_session = x_user_email or session_id
     import yfinance as yf
     try:
         tk = yf.Ticker(request.ticker.upper())
         price = float(tk.fast_info.last_price or 0)
         if price <= 0:
             raise HTTPException(status_code=422, detail=f"Could not fetch price for {request.ticker}")
-        result = _portfolio_store.sell(session_id, request.ticker, request.shares, price)
+        result = _portfolio_store.sell(target_session, request.ticker, request.shares, price)
         return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -489,20 +496,21 @@ def paper_sell(session_id: str, request: SellRequest) -> dict:
     "/portfolio/summary/{session_id}",
     summary="Live portfolio summary from SQLite WAL holdings",
 )
-def portfolio_summary(session_id: str) -> dict:
+def portfolio_summary(session_id: str, x_user_email: Optional[str] = Header(None)) -> dict:
     """
     Load holdings from the SQLite WAL paper-trading store, fetch live prices
     via yfinance, and return total value, P&L, and per-ticker allocation.
 
     Returns an empty summary when the session has no holdings yet.
     """
+    target_session = x_user_email or session_id
     import json
     from src.tools.portfolio_tools import analyze_portfolio  # type: ignore[attr-defined]
 
-    holdings = _portfolio_store.get_all_holdings()
+    holdings = _portfolio_store.get_holdings(target_session)
     if not holdings:
         return {
-            "session_id": session_id,
+            "session_id": target_session,
             "holdings": [],
             "summary": {
                 "total_value": 0.0,
@@ -522,12 +530,12 @@ def portfolio_summary(session_id: str) -> dict:
     try:
         raw = analyze_portfolio.invoke({"holdings_json": json.dumps(clean)})
         result = json.loads(raw)
-        result["session_id"] = session_id
+        result["session_id"] = target_session
         return result
     except Exception as exc:
         logger.error("portfolio_summary error: %s", exc)
         return {
-            "session_id": session_id,
+            "session_id": target_session,
             "holdings": [],
             "summary": {"total_value": 0.0, "total_pnl": 0.0, "total_pnl_pct": 0.0,
                         "concentration_risk": "none"},

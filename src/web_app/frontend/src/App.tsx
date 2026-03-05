@@ -14,7 +14,7 @@ import { AuthPage } from './components/auth/AuthPage';
 import {
   getSessions, createSession, getActiveSessionId, setActiveSessionId, saveProfile, getProfile, deleteSession,
 } from './lib/storage';
-import { setAccessTokenFetcher } from './lib/api';
+import { setAccessTokenFetcher, setUserEmail } from './lib/api';
 import { useAuth0 } from '@auth0/auth0-react';
 import type { ChatSession, UserProfile } from './lib/types';
 
@@ -70,14 +70,16 @@ function AppContent() {
   }, []);
 
   // Connect Auth0 token fetcher to API client
-  const { getAccessTokenSilently, isAuthenticated, isLoading } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, isLoading, user } = useAuth0();
   useEffect(() => {
     if (isAuthenticated) {
       setAccessTokenFetcher(() => getAccessTokenSilently());
+      setUserEmail(user?.email);
     } else {
       setAccessTokenFetcher(() => Promise.resolve(undefined));
+      setUserEmail(undefined);
     }
-  }, [isAuthenticated, getAccessTokenSilently]);
+  }, [isAuthenticated, getAccessTokenSilently, user]);
 
   // Must be declared here (before early returns) so hook call count is
   // identical on every render regardless of auth state.
