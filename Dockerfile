@@ -24,15 +24,6 @@ COPY src/web_app/frontend/ .
 ARG VITE_API_BASE_URL=""
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-ARG VITE_AUTH0_DOMAIN=""
-ENV VITE_AUTH0_DOMAIN=${VITE_AUTH0_DOMAIN}
-
-ARG VITE_AUTH0_CLIENT_ID=""
-ENV VITE_AUTH0_CLIENT_ID=${VITE_AUTH0_CLIENT_ID}
-
-ARG VITE_AUTH0_AUDIENCE=""
-ENV VITE_AUTH0_AUDIENCE=${VITE_AUTH0_AUDIENCE}
-
 RUN npm run build
 
 
@@ -63,6 +54,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ── Application source ────────────────────────────────────────────────────────
 COPY src/        ./src/
 COPY config.yaml .
+COPY deploy/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # SQLite database directory (ephemeral within the Space's lifetime)
 RUN mkdir -p /app/data
@@ -93,5 +86,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:7860/api/health || exit 1
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
-# supervisord starts both nginx and uvicorn
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Run the entrypoint script which injects runtime environment variables into
+# index.html before starting supervisord to manage nginx and uvicorn.
+CMD ["/app/entrypoint.sh"]
