@@ -30,8 +30,7 @@ def _safe_float(val) -> Optional[float]:
 
 import os
 import requests
-
-FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+from src.utils.config import FINNHUB_BASE_URL
 
 @tool
 def get_stock_quote(ticker: str) -> str:

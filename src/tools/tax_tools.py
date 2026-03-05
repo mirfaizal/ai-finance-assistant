@@ -18,8 +18,7 @@ from langchain_core.tools import tool
 
 import os
 import requests
-
-FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+from src.utils.config import FINNHUB_BASE_URL
 
 def _safe_float(val) -> Optional[float]:
     """Coerce *val* to float, returning ``None`` for any non-numeric input."""

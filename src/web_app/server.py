@@ -247,8 +247,7 @@ def market_quotes(symbols: str = "SPY,AAPL,TSLA,NVDA,BTC-USD") -> dict:
     import yfinance as yf
     import os
     import requests
-
-    FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+    from src.utils.config import FINNHUB_BASE_URL
     result = {}
     api_key = os.environ.get("FINNHUB_API_KEY")
     

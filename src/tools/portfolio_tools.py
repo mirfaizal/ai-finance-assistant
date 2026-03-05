@@ -29,8 +29,7 @@ def _safe_float(val) -> Optional[float]:
 
 import os
 import requests
-
-FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+from src.utils.config import FINNHUB_BASE_URL
 
 # Global in-memory cache for company names to prevent redundant yfinance API calls
 _COMPANY_NAME_CACHE: dict[str, str] = {}

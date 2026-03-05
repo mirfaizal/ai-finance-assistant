@@ -33,8 +33,7 @@ from src.memory.portfolio_store import PortfolioStore
 
 import os
 import requests
-
-FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+from src.utils.config import FINNHUB_BASE_URL
 
 def _live_price(ticker: str) -> float:
     """Fetch the latest market price for *ticker* via Finnhub REST API."""
