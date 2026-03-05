@@ -20,14 +20,7 @@ from langchain_core.tools import tool
 
 
 # ── RSS feed registry ─────────────────────────────────────────────────────────
-
-_RSS_FEEDS = {
-    "top_stories": "https://finance.yahoo.com/rss/topfinstories",
-    "markets":     "https://finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US",
-    "technology":  "https://finance.yahoo.com/rss/2.0/headline?s=%5ENDX&region=US&lang=en-US",
-    "crypto":      "https://finance.yahoo.com/rss/2.0/headline?s=BTC-USD&region=US&lang=en-US",
-    "economy":     "https://finance.yahoo.com/rss/2.0/headline?s=%5ETNX&region=US&lang=en-US",
-}
+from src.utils.config import YAHOO_RSS_FEEDS as _RSS_FEEDS
 
 _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; finance-assistant/1.0)"}
 
