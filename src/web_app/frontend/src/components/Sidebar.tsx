@@ -2,9 +2,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, ChevronLeft, ChevronRight,
-  TrendingUp, BookOpen, Sparkles, Clock, Trash2, LogOut, Briefcase,
+  TrendingUp, BookOpen, Sparkles, Clock, Trash2, Briefcase,
 } from 'lucide-react';
 import type { ChatSession } from '../lib/types';
+import { UserProfile } from './auth/UserProfile';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -29,11 +30,6 @@ export function Sidebar({
   sessions, activeSessionId, onSessionSelect, onNewSession, onDeleteSession,
 }: SidebarProps) {
   const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    // Placeholder: clear local session state if needed; could call auth API later
-    navigate('/');
-  };
 
   return (
     <motion.aside
@@ -137,12 +133,15 @@ export function Sidebar({
         )}
       </AnimatePresence>
 
-      {!collapsed && (
-        <button type="button" className="nav-item sign-out-btn" onClick={handleSignOut}>
-          <LogOut size={18} />
-          <span>Sign Out</span>
-        </button>
-      )}
-    </motion.aside>
+      <div className="mt-auto flex-shrink-0">
+        {!collapsed ? (
+          <UserProfile />
+        ) : (
+          <div className="p-3 mb-2 flex justify-center w-full">
+            <UserProfile />
+          </div>
+        )}
+      </div>
+    </motion.aside >
   );
 }

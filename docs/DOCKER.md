@@ -23,6 +23,10 @@ TAVILY_API_KEY=tvly-...           # Required
 PINECONE_API_KEY=...              # Required
 PINECONE_INDEX=ai-finance-rag     # Required
 
+AUTH0_DOMAIN=your-tenant.us.auth0.com  # Required for JWT-protected endpoints
+AUTH0_AUDIENCE=https://your-api-identifier  # Required for JWT-protected endpoints
+FINNHUB_API_KEY=...               # Optional (fallback for /market/quotes)
+
 LANGCHAIN_TRACING_V2=false        # Optional (set true to enable LangSmith)
 LANGCHAIN_API_KEY=...             # Optional
 LANGCHAIN_PROJECT=ai-finance-assistant

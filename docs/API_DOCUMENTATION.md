@@ -28,7 +28,7 @@
 
 ## Overview
 
-The AI Finance Assistant backend is a **FastAPI** application exposing 25 REST endpoints across eight functional groups.  It combines:
+The AI Finance Assistant backend is a **FastAPI** application exposing 27 REST endpoints across eight functional groups.  It combines:
 
 | Layer | Technology |
 |---|---|
@@ -44,12 +44,15 @@ The AI Finance Assistant backend is a **FastAPI** application exposing 25 REST e
 
 ## Authentication
 
+Several endpoints require an **Auth0 JWT bearer token** (RS256).  The token is validated against your Auth0 tenant's JWKS endpoint.
+
 | Context | Header | Description |
 |---|---|---|
+| `/ask`, `/history/{session_id}`, `/portfolio/trade`, `/portfolio/holdings/{session_id}`, `DELETE /portfolio/holdings/{session_id}` | `Authorization: Bearer <jwt>` | Auth0 RS256 JWT — required when `AUTH0_DOMAIN` is set |
 | Quiz endpoints | `X-QUIZ-API-KEY` | Required only when `QUIZ_API_KEY` env var is set |
 | Admin / seeding | `X-RAG-ADMIN-KEY` | Required only when `RAG_ADMIN_KEY` env var is set |
 
-All other endpoints are **unauthenticated** by default.
+All other endpoints are **unauthenticated** by default.  When `AUTH0_DOMAIN` is not configured the `verify_token` dependency still runs but will return a `500` — set the env var (or omit the dependency in development builds) to disable.
 
 ---
 
@@ -1023,12 +1026,17 @@ curl -X POST http://localhost:8000/quiz/seed-pool \
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `OPENAI_API_KEY` | ✅ | — | OpenAI API key (all LLM + embeddings calls) |
-| `OPENAI_MODEL` | ❌ | `gpt-4o-mini` | Overrides the LLM model used |
+| `OPENAI_MODEL` | ❌ | `gpt-4.1` | Overrides the LLM model used |
+| `AUTH0_DOMAIN` | ❌* | — | Auth0 tenant domain (e.g. `your-tenant.us.auth0.com`) — required for authenticated endpoints |
+| `AUTH0_AUDIENCE` | ❌* | — | Auth0 API audience identifier — required alongside `AUTH0_DOMAIN` |
 | `PINECONE_API_KEY` | ❌ | — | Required for RAG and quiz pool |
 | `PINECONE_INDEX` | ❌ | `ai-finance-rag` | Pinecone index name |
 | `TAVILY_API_KEY` | ❌ | — | Enables real-time web search in agents |
+| `FINNHUB_API_KEY` | ❌ | — | Optional Finnhub fallback for `/market/quotes` (falls back to yfinance when absent) |
 | `QUIZ_API_KEY` | ❌ | — | When set, all `/quiz/*` endpoints require `X-QUIZ-API-KEY` header |
 | `RAG_ADMIN_KEY` | ❌ | — | When set, `/rag/seed` and `/quiz/seed-pool` require `X-RAG-ADMIN-KEY` header |
 | `LANGCHAIN_API_KEY` | ❌ | — | LangSmith observability |
 | `LANGCHAIN_TRACING_V2` | ❌ | — | Set `true` to enable LangSmith tracing |
 | `LANGCHAIN_PROJECT` | ❌ | — | LangSmith project name |
+
+> \* `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` are technically optional env vars but the relevant endpoints will return `500` if they are missing when the `verify_token` dependency is in use.

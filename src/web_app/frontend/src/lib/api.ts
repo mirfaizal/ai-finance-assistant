@@ -1,6 +1,34 @@
 import { BASE_URL } from './config';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Global token fetcher injected by the Auth0Provider React layer
+let _getAccessToken: (() => Promise<string | undefined>) | null = null;
+let _userEmail: string | undefined = undefined;
+
+export function setAccessTokenFetcher(fetcher: () => Promise<string | undefined>) {
+  _getAccessToken = fetcher;
+}
+
+export function setUserEmail(email: string | undefined) {
+  _userEmail = email;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (_getAccessToken) {
+    try {
+      const token = await _getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (err) {
+      console.warn("Failed to get Auth0 access token", err);
+    }
+  }
+  if (_userEmail) {
+    headers['X-User-Email'] = _userEmail;
+  }
+  return headers;
+}// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface AskResponse {
   question: string;
@@ -33,10 +61,11 @@ export async function askQuestion(
   question: string,
   sessionId?: string | null,
 ): Promise<AskResponse> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${BASE_URL}/ask`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, session_id: sessionId ?? undefined }),
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, session_id: sessionId ?? undefined, user_email: _userEmail }),
   });
 
   if (!res.ok) {
@@ -53,9 +82,10 @@ export async function askQuestion(
  * @param score 1 for Thumbs Up, 0 for Thumbs Down.
  */
 export async function sendFeedback(runId: string, score: number): Promise<{status: string}> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${BASE_URL}/feedback`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({ run_id: runId, score }),
   });
 
@@ -75,8 +105,10 @@ export async function fetchHistory(
   sessionId: string,
   lastN = 20,
 ): Promise<HistoryResponse> {
+  const headers = await getAuthHeaders();
   const res = await fetch(
     `${BASE_URL}/history/${encodeURIComponent(sessionId)}?last_n=${lastN}`,
+    { headers }
   );
 
   if (!res.ok) {
@@ -89,7 +121,8 @@ export async function fetchHistory(
 
 export async function checkHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE_URL}/health`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}/health`, { headers });
     return res.ok;
   } catch {
     return false;
@@ -118,8 +151,10 @@ export interface PortfolioHoldingsResponse {
 export async function getPortfolioHoldings(
   sessionId: string,
 ): Promise<PortfolioHoldingsResponse> {
+  const headers = await getAuthHeaders();
   const res = await fetch(
     `${BASE_URL}/portfolio/holdings/${encodeURIComponent(sessionId)}`,
+    { headers }
   );
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
   return res.json() as Promise<PortfolioHoldingsResponse>;
@@ -138,8 +173,10 @@ export async function generateQuiz(topic: string, sessionId?: string | null): Pr
   body.set('topic', topic);
   if (sessionId) body.set('session_id', sessionId);
 
+  const headers = await getAuthHeaders();
   const res = await fetch(`${BASE_URL}/quiz/generate?${body.toString()}`, {
     method: 'POST',
+    headers
   });
   if (!res.ok) {
     const err = await res.text();
@@ -154,13 +191,15 @@ export async function submitQuizAnswer(questionId: string, selectedIndex: number
   params.set('selected_index', String(selectedIndex));
   if (sessionId) params.set('session_id', sessionId);
 
-  const res = await fetch(`${BASE_URL}/quiz/answer?${params.toString()}`, { method: 'POST' });
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/quiz/answer?${params.toString()}`, { method: 'POST', headers });
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
   return res.json();
 }
 
 export async function getCoinBalance(sessionId: string) {
-  const res = await fetch(`${BASE_URL}/quiz/coins/${encodeURIComponent(sessionId)}`);
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/quiz/coins/${encodeURIComponent(sessionId)}`, { headers });
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
   return res.json();
 }
@@ -180,7 +219,8 @@ export async function getPoolQuiz(
   if (sessionId) params.set('session_id', sessionId);
   if (topic) params.set('topic', topic);
 
-  const res = await fetch(`${BASE_URL}/quiz/pool/random?${params.toString()}`);
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/quiz/pool/random?${params.toString()}`, { headers });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Backend error ${res.status}: ${err}`);
@@ -208,7 +248,8 @@ export interface AcademyCourseResponse {
  * slug: 'investing-101' | 'tax-strategies' | 'market-mechanics' | 'crypto-basics'
  */
 export async function getAcademyCourse(slug: string): Promise<AcademyCourseResponse> {
-  const res = await fetch(`${BASE_URL}/academy/course/${encodeURIComponent(slug)}`);
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/academy/course/${encodeURIComponent(slug)}`, { headers });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Backend error ${res.status}: ${err}`);
@@ -221,7 +262,7 @@ export async function getAcademyCourse(slug: string): Promise<AcademyCourseRespo
  * Requires RAG_ADMIN_KEY header if the server has RAG_ADMIN_KEY env var set.
  */
 export async function seedQuizPool(adminKey?: string): Promise<{ seeded: number }> {
-  const headers: Record<string, string> = {};
+  const headers = await getAuthHeaders();
   if (adminKey) headers['X-RAG-ADMIN-KEY'] = adminKey;
   const res = await fetch(`${BASE_URL}/quiz/seed-pool`, { method: 'POST', headers });
   if (!res.ok) throw new Error(`Backend error ${res.status}`);
