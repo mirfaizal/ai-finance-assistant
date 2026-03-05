@@ -193,5 +193,5 @@ def log_run(
         logger.debug("LangSmith: logged run '%s'", name)
         return str(run_id)
     except Exception as exc:
-        logger.debug("LangSmith log_run failed silently: %s", exc)
+        logger.error("LangSmith log_run failed silently: %s", exc, exc_info=True)
         return None

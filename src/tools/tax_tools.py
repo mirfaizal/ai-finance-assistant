@@ -15,8 +15,6 @@ from typing import Optional
 import yfinance as yf
 from langchain_core.tools import tool
 
-from src.tools.trading_tools import _get_yf_session
-
 
 def _safe_float(val) -> Optional[float]:
     """Coerce *val* to float, returning ``None`` for any non-numeric input."""
@@ -46,7 +44,7 @@ def calculate_capital_gains(
     Note: this is a simplified estimate — consult a tax professional for accuracy.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip(), session=_get_yf_session())
+        tk = yf.Ticker(ticker.upper().strip())
         price = _safe_float(tk.fast_info.last_price)
         if price is None:
             return json.dumps({"error": f"Could not get live price for {ticker}"})
@@ -107,7 +105,7 @@ def find_tax_loss_opportunities(holdings_json: str) -> str:
             avg_cost = float(h.get("avg_cost", 0))
 
             try:
-                price = _safe_float(yf.Ticker(ticker, session=_get_yf_session()).fast_info.last_price) or 0.0
+                price = _safe_float(yf.Ticker(ticker).fast_info.last_price) or 0.0
             except Exception:
                 price = 0.0
 

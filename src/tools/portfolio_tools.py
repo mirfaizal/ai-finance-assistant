@@ -17,7 +17,6 @@ import yfinance as yf
 from langchain_core.tools import tool
 
 from src.tools.stock_tools import get_stock_quote
-from src.tools.trading_tools import _get_yf_session
 
 
 def _safe_float(val) -> Optional[float]:
@@ -42,7 +41,7 @@ def _fetch_company_name(ticker: str, retries: int = 3, backoff: float = 2.0) -> 
     # 2. Otherwise fetch from yfinance
     for attempt in range(retries):
         try:
-            info = yf.Ticker(ticker_upper, session=_get_yf_session()).info
+            info = yf.Ticker(ticker_upper).info
             name = info.get("longName", ticker_upper)
             _COMPANY_NAME_CACHE[ticker_upper] = name
             return name
@@ -84,7 +83,6 @@ def analyze_portfolio(holdings_json: str) -> str:
                 auto_adjust=True,
                 progress=False,
                 threads=True,
-                session=_get_yf_session(),
             )
             close = raw["Close"] if "Close" in raw.columns else raw.xs("Close", axis=1, level=0)
             last_row = close.ffill().iloc[-1]
@@ -95,7 +93,7 @@ def analyze_portfolio(holdings_json: str) -> str:
             # Fallback: individual fast_info calls (slower, but resilient)
             for tk_sym in tickers:
                 try:
-                    prices[tk_sym] = _safe_float(yf.Ticker(tk_sym, session=_get_yf_session()).fast_info.last_price) or 0.0
+                    prices[tk_sym] = _safe_float(yf.Ticker(tk_sym).fast_info.last_price) or 0.0
                 except Exception:
                     prices[tk_sym] = 0.0
                 time.sleep(0.3)  # throttle individual calls
@@ -185,7 +183,7 @@ def get_portfolio_performance(holdings_json: str, period: str = "1y") -> str:
         shares_map = {h["ticker"].upper(): float(h["shares"]) for h in holdings}
 
         all_tickers = tickers + ["SPY"]
-        data = yf.download(all_tickers, period=period, auto_adjust=True, progress=False, session=_get_yf_session())["Close"]
+        data = yf.download(all_tickers, period=period, auto_adjust=True, progress=False)["Close"]
         if data.empty:
             return json.dumps({"error": "Could not fetch price history"})
 

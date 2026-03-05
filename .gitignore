@@ -57,3 +57,5 @@ test_langsmith.py
 test_system.py
 
 
+bfg-1.14.0.jar
+data/conversations.db*

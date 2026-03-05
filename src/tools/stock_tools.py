@@ -15,8 +15,6 @@ from typing import Optional
 import yfinance as yf
 from langchain_core.tools import tool
 
-from src.tools.trading_tools import _get_yf_session
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,7 +37,7 @@ def get_stock_quote(ticker: str) -> str:
     Returns price, change %, market cap, P/E ratio, 52-week range, sector, and volume.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip(), session=_get_yf_session())
+        tk = yf.Ticker(ticker.upper().strip())
         info = tk.info
         if not info or "regularMarketPrice" not in info:
             fast = tk.fast_info
@@ -81,7 +79,7 @@ def get_stock_history(ticker: str, period: str = "1y") -> str:
     Returns start/end price, total return %, annualised volatility, and trading day count.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip(), session=_get_yf_session())
+        tk = yf.Ticker(ticker.upper().strip())
         hist = tk.history(period=period)
         if hist.empty:
             return json.dumps({"error": "No historical data found", "ticker": ticker})
@@ -117,7 +115,7 @@ def get_stock_financials(ticker: str) -> str:
     debt ratios, return on equity, beta, and analyst recommendations.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip(), session=_get_yf_session())
+        tk = yf.Ticker(ticker.upper().strip())
         info = tk.info
 
         # Analyst recommendations summary
