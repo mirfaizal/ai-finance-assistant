@@ -10,9 +10,12 @@ import { MarketsPage } from './components/MarketsPage';
 import { LearningPage } from './components/LearningPage';
 import { PortfolioPage } from './components/PortfolioPage';
 import { RiskModal } from './components/RiskModal';
+import { AuthPage } from './components/auth/AuthPage';
 import {
   getSessions, createSession, getActiveSessionId, setActiveSessionId, saveProfile, getProfile, deleteSession,
 } from './lib/storage';
+import { setAccessTokenFetcher } from './lib/api';
+import { useAuth0 } from '@auth0/auth0-react';
 import type { ChatSession, UserProfile } from './lib/types';
 
 const MOBILE_NAV = [
@@ -66,13 +69,18 @@ function AppContent() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleModalComplete = (updates: Partial<UserProfile>) => {
-    const updated = { ...profile, ...updates };
-    saveProfile(updated);
-    setProfile(updated);
-    setShowModal(false);
-  };
+  // Connect Auth0 token fetcher to API client
+  const { getAccessTokenSilently, isAuthenticated, isLoading } = useAuth0();
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAccessTokenFetcher(() => getAccessTokenSilently());
+    } else {
+      setAccessTokenFetcher(() => Promise.resolve(undefined));
+    }
+  }, [isAuthenticated, getAccessTokenSilently]);
 
+  // Must be declared here (before early returns) so hook call count is
+  // identical on every render regardless of auth state.
   const ensureSession = useCallback(() => {
     if (!activeSessionId) {
       const s = createSession();
@@ -82,6 +90,38 @@ function AppContent() {
     }
     return activeSessionId;
   }, [activeSessionId]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'var(--bg-base, #080d17)',
+      }}>
+        <div style={{
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          border: '3px solid rgba(20,184,166,0.2)',
+          borderTopColor: '#14b8a6',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
+  const handleModalComplete = (updates: Partial<UserProfile>) => {
+    const updated = { ...profile, ...updates };
+    saveProfile(updated);
+    setProfile(updated);
+    setShowModal(false);
+  };
 
   const handleStartChat = (text?: string) => {
     ensureSession();

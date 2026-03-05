@@ -4,7 +4,7 @@
 | Field | Value |
 |---|---|
 | **Document Version** | 1.0 |
-| **Date** | March 1, 2026 |
+| **Date** | March 5, 2026 |
 | **Status** | Released (v2.0.0) |
 | **Owner** | AI Finance Assistant Team |
 
@@ -85,7 +85,7 @@ A single agentic assistant that can simultaneously:
 | LLM routing accuracy (GPT-4.1-mini) | ≥ 90 % correct agent selection |
 | API p95 response latency ( `/ask` ) | ≤ 8 seconds |
 | Memory synthesis trigger at turn > 5 | 100 % reliable |
-| Test suite pass rate | 100 % (388 tests) |
+| Test suite pass rate | 100 % (393 tests) |
 | Test coverage | ≥ 80 % of source lines |
 | Uptime (Docker / EC2 deployment) | ≥ 99 % |
 
@@ -125,7 +125,7 @@ A single agentic assistant that can simultaneously:
 - Tavily real-time web search (optional, graceful fallback)
 - Pinecone RAG knowledge base (optional, graceful fallback)
 - LangSmith observability tracing
-- FastAPI REST backend (17+ endpoints)
+- FastAPI REST backend (27 endpoints)
 - React + TypeScript frontend dashboard
 - MCP server for Claude Desktop integration
 - Docker + docker-compose one-command deployment
@@ -456,6 +456,7 @@ def ask_<agent>(
 | OpenAI GPT-4.1 | Agent LLM responses | `OPENAI_API_KEY` |
 | OpenAI GPT-4.1-mini | Routing, memory synthesis | `OPENAI_API_KEY` |
 | yfinance | Live market data (no key needed) | — |
+| Auth0 | JWT authentication for protected endpoints | `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` |
 
 ### 12.2 Optional (graceful fallback)
 
@@ -464,6 +465,7 @@ def ask_<agent>(
 | Tavily | Real-time web search for news/Q&A | `TAVILY_API_KEY` | LLM training data only |
 | Pinecone | RAG knowledge retrieval | `PINECONE_API_KEY`, `PINECONE_INDEX` | No RAG context injected |
 | LangSmith | Observability & tracing | `LANGCHAIN_API_KEY`, `LANGCHAIN_TRACING_V2` | Silent no-op |
+| Finnhub | Enhanced market quotes (fallback to yfinance) | `FINNHUB_API_KEY` | yfinance used automatically |
 
 ### 12.3 OpenAI Model Configuration
 
@@ -592,7 +594,7 @@ The system is configured for HuggingFace Spaces deployment via `sdk: docker` in 
 | MCP server | `tests/test_mcp_server.py` | MCP tool interfaces |
 | Coverage boost | `tests/test_coverage_boost.py` | Edge cases |
 
-**Total: 388 tests across 24 modules**
+**Total: 393 tests across 24 modules**
 
 ### 16.2 Running Tests
 
@@ -609,7 +611,7 @@ pytest tests/test_stock_agent.py -v
 
 ### 16.3 CI Requirements
 
-- All 388 tests MUST pass before merge to main
+- All 393 tests MUST pass before merge to main
 - Coverage MUST NOT drop below 80 %
 - LLM-dependent tests MUST be mocked (`unittest.mock.patch`) to avoid API cost in CI
 
@@ -642,4 +644,4 @@ pytest tests/test_stock_agent.py -v
 
 ---
 
-*This document reflects the state of the AI Finance Assistant as of v2.0.0 (March 1, 2026). All requirements marked as "SHALL" are implemented and verified by the test suite.*
+*This document reflects the state of the AI Finance Assistant as of v2.0.0 (March 5, 2026). All requirements marked as "SHALL" are implemented and verified by the test suite.*

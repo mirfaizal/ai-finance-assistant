@@ -6,12 +6,13 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from src.workflow.orchestrator import process_query
 from src.memory.conversation_store import ConversationStore
+from src.web_app.auth import verify_token
 from src.memory.portfolio_store import PortfolioStore
 from src.utils.logging import get_logger
 from src.utils.logging import get_logger
@@ -94,7 +95,7 @@ def health_check() -> dict:
 
 
 @app.post("/ask", response_model=AskResponse, summary="Ask a finance question")
-def ask(request: AskRequest) -> AskResponse:
+def ask(request: AskRequest, current_user: str = Depends(verify_token)) -> AskResponse:
     """
     Route a finance question through the orchestrator and return the answer.
 
@@ -112,9 +113,12 @@ def ask(request: AskRequest) -> AskResponse:
     if not question:
         raise HTTPException(status_code=422, detail="Question must not be empty.")
 
-    logger.info("POST /ask  question=%s  session=%s", question[:80], request.session_id)
+    # Override session_id with Auth0 subject if not present, else use as provided (but isolated per user later if needed)
+    session_id = request.session_id or f"auth0_{current_user}"
+    
+    logger.info("POST /ask  question=%s  session=%s", question[:80], session_id)
     try:
-        result = process_query(question, session_id=request.session_id)
+        result = process_query(question, session_id=session_id)
         return AskResponse(
             question=question,
             answer=result["answer"],
@@ -132,7 +136,7 @@ def ask(request: AskRequest) -> AskResponse:
     response_model=HistoryResponse,
     summary="Retrieve conversation history for a session",
 )
-def get_history(session_id: str, last_n: int = 20) -> HistoryResponse:
+def get_history(session_id: str, last_n: int = 20, current_user: str = Depends(verify_token)) -> HistoryResponse:
     """
     Return up to *last_n* prior messages for the given *session_id*.
 
@@ -316,6 +320,32 @@ class PortfolioRequest(BaseModel):
     }
 
 
+class TradeRequest(BaseModel):
+    session_id: str
+    ticker: str
+    action: str # "buy" or "sell"
+    shares: float
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"session_id": "test_session", "ticker": "AAPL", "action": "buy", "shares": 10}
+        }
+    }
+
+
+@app.post("/portfolio/trade", summary="Execute a paper trade")
+def submit_trade(trade: TradeRequest, current_user: str = Depends(verify_token)) -> dict:
+    """
+    Execute a paper trade (buy or sell) for a given session.
+    """
+    if trade.action.lower() == "buy":
+        return paper_buy(trade.session_id, BuyRequest(ticker=trade.ticker, shares=trade.shares))
+    elif trade.action.lower() == "sell":
+        return paper_sell(trade.session_id, SellRequest(ticker=trade.ticker, shares=trade.shares))
+    else:
+        raise HTTPException(status_code=400, detail="Invalid trade action. Must be 'buy' or 'sell'.")
+
+
 @app.post("/portfolio/analyze", summary="Analyze a portfolio with live prices")
 def portfolio_analyze(request: PortfolioRequest) -> dict:
     """
@@ -380,7 +410,7 @@ class SellRequest(BaseModel):
     "/portfolio/holdings/{session_id}",
     summary="Get paper-portfolio holdings for a session",
 )
-def get_holdings(session_id: str) -> dict:
+def get_holdings(session_id: str, current_user: str = Depends(verify_token)) -> dict:
     """
     Return all current paper-trading holdings for *session_id* as stored
     in SQLite.  Includes ticker, shares, average cost, and last-updated time.
@@ -891,7 +921,7 @@ def quiz_history(request: Request, session_id: Optional[str] = None, last_n: int
     "/portfolio/holdings/{session_id}",
     summary="Clear all paper-portfolio holdings for a session",
 )
-def clear_holdings(session_id: str) -> dict:
+def clear_holdings(session_id: str, current_user: str = Depends(verify_token)) -> dict:
     """
     Delete all holdings for *session_id*.  Trade history is preserved.
     Useful for resetting a paper portfolio without losing the audit trail.

@@ -66,10 +66,10 @@ A **production-ready, truly agentic AI system** for financial education, built w
 - **Paper Trading** — buy/sell stocks with live prices; positions and trade history stored in SQLite WAL
 - **MCP Server** — 6 tools exposed via `fastmcp` for Claude Desktop integration (bonus feature)
 - **LangSmith Observability** — every ReAct tool call, routing decision, and agent run traced
-- **FastAPI Backend** — 17+ async REST endpoints with Pydantic validation
+- **FastAPI Backend** — 27 async REST endpoints with Pydantic validation
 - **React + TypeScript Frontend** — live dashboard: market chart, portfolio pie, ticker strip, agent chat
 - **Docker** — `Dockerfile.backend` + `docker-compose.yml` for one-command local deployment
-- **388 Tests** — 24 test modules across agents, tools, orchestrator, memory stores, API, and MCP server
+- **393 Tests** — 24 test modules across agents, tools, orchestrator, memory stores, API, and MCP server
 
 ---
 
@@ -142,7 +142,7 @@ Session 1, Turn 2:
 
 | Component | File | Responsibility |
 |---|---|---|
-| FastAPI App | `src/web_app/server.py` | 9 REST endpoints, CORS, Pydantic validation |
+| FastAPI App | `src/web_app/server.py` | 27 REST endpoints, CORS, Pydantic validation |
 | Orchestrator | `src/workflow/orchestrator.py` | LangGraph StateGraph + MemorySaver + process_query |
 | LLM Router | `src/core/router.py` | GPT-4.1-mini routing + keyword fallback |
 | Conversation Store | `src/memory/conversation_store.py` | SQLite WAL — sessions, messages, summaries |
@@ -688,7 +688,7 @@ ai_finance_assistant/
 │   │   ├── pinecone_store.py          ← Pinecone upsert + query
 │   │   └── retriever.py               ← get_rag_context() for agents
 │   ├── web_app/
-│   │   ├── server.py                  ← FastAPI (9 endpoints)
+│   │   ├── server.py                  ← FastAPI (27 endpoints)
 │   │   └── frontend/                  ← React + TypeScript + Vite
 │   │       └── src/
 │   │           ├── components/
