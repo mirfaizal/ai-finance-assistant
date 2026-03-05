@@ -11,16 +11,16 @@ export const UserProfile: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col border-t border-[#1e2d42] mt-auto bg-transparent pt-3 mt-4">
-            <div className="flex items-center gap-3 mb-2 px-2">
+        <div className="user-profile-container">
+            <div className="user-profile-header">
                 {user.picture ? (
-                    <img src={user.picture} alt={user.name} className="w-9 h-9 rounded-full border border-[#1e2d42]" />
+                    <img src={user.picture} alt={user.name} className="user-avatar" />
                 ) : (
-                    <UserCircle size={36} className="text-[#8a9ab5]" />
+                    <UserCircle size={36} className="user-avatar-fallback" />
                 )}
-                <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-sm text-[#e8edf5] truncate">{user.name}</span>
-                    <span className="text-xs text-[#8a9ab5] truncate">{user.email}</span>
+                <div className="user-info">
+                    <span className="user-name">{user.name}</span>
+                    <span className="user-email">{user.email}</span>
                 </div>
             </div>
             <LogoutButton />
