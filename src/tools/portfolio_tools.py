@@ -27,6 +27,9 @@ def _safe_float(val) -> Optional[float]:
         return None
 
 
+import os
+import requests
+
 # Global in-memory cache for company names to prevent redundant yfinance API calls
 _COMPANY_NAME_CACHE: dict[str, str] = {}
 
@@ -37,6 +40,21 @@ def _fetch_company_name(ticker: str, retries: int = 3, backoff: float = 2.0) -> 
     # 1. Return from cache if we already fetched it this server session
     if ticker_upper in _COMPANY_NAME_CACHE:
         return _COMPANY_NAME_CACHE[ticker_upper]
+
+    # 1.5 Finnhub API
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if api_key:
+        try:
+            url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker_upper}&token={api_key}"
+            resp = requests.get(url, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("name"):
+                    name = data["name"]
+                    _COMPANY_NAME_CACHE[ticker_upper] = name
+                    return name
+        except Exception:
+            pass
 
     # 2. Otherwise fetch from yfinance
     for attempt in range(retries):
@@ -71,32 +89,47 @@ def analyze_portfolio(holdings_json: str) -> str:
             return json.dumps({"error": "Empty portfolio"})
 
         tickers = [h["ticker"].upper() for h in holdings]
-
-        # ── Batch-fetch latest close prices in a single API call ──────────────
-        # Using period="5d" so we always get at least one trading day even on
-        # weekends/holidays; we take the last available close.
         prices: dict[str, float] = {}
-        try:
-            raw = yf.download(
-                tickers,
-                period="5d",
-                auto_adjust=True,
-                progress=False,
-                threads=True,
-            )
-            close = raw["Close"] if "Close" in raw.columns else raw.xs("Close", axis=1, level=0)
-            last_row = close.ffill().iloc[-1]
-            for tk_sym in tickers:
-                val = _safe_float(last_row.get(tk_sym))
-                prices[tk_sym] = val if val else 0.0
-        except Exception:
-            # Fallback: individual fast_info calls (slower, but resilient)
+        api_key = os.environ.get("FINNHUB_API_KEY")
+
+        # ── Method 1: Finnhub REST API ──────────────
+        if api_key:
             for tk_sym in tickers:
                 try:
-                    prices[tk_sym] = _safe_float(yf.Ticker(tk_sym).fast_info.last_price) or 0.0
+                    url = f"https://finnhub.io/api/v1/quote?symbol={tk_sym}&token={api_key}"
+                    resp = requests.get(url, timeout=5)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if "c" in data and data["c"] > 0:
+                            prices[tk_sym] = float(data["c"])
                 except Exception:
-                    prices[tk_sym] = 0.0
-                time.sleep(0.3)  # throttle individual calls
+                    pass
+                time.sleep(0.05)  # Throttle Finnhub calls
+
+        # ── Method 2: yfinance fallback for missing ──────────────
+        missing_tickers = [t for t in tickers if t not in prices]
+        if missing_tickers:
+            try:
+                raw = yf.download(
+                    missing_tickers,
+                    period="5d",
+                    auto_adjust=True,
+                    progress=False,
+                    threads=True,
+                )
+                close = raw["Close"] if "Close" in raw.columns else raw.xs("Close", axis=1, level=0)
+                last_row = close.ffill().iloc[-1]
+                for tk_sym in missing_tickers:
+                    val = _safe_float(last_row.get(tk_sym))
+                    prices[tk_sym] = val if val else 0.0
+            except Exception:
+                # Fallback: individual fast_info calls (slower, but resilient)
+                for tk_sym in missing_tickers:
+                    try:
+                        prices[tk_sym] = _safe_float(yf.Ticker(tk_sym).fast_info.last_price) or 0.0
+                    except Exception:
+                        prices[tk_sym] = 0.0
+                    time.sleep(0.3)  # throttle individual calls
 
         # ── Per-holding metadata (company names) ─────────────────────────────
         # Spread requests with a small delay to avoid rate-limiting.

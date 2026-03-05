@@ -28,6 +28,9 @@ def _safe_float(val) -> Optional[float]:
 
 # ── tools ─────────────────────────────────────────────────────────────────────
 
+import os
+import requests
+
 @tool
 def get_stock_quote(ticker: str) -> str:
     """
@@ -37,12 +40,54 @@ def get_stock_quote(ticker: str) -> str:
     Returns price, change %, market cap, P/E ratio, 52-week range, sector, and volume.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip())
+        ticker = ticker.upper().strip()
+        api_key = os.environ.get("FINNHUB_API_KEY")
+        
+        # Method 1: Finnhub REST API
+        if api_key:
+            try:
+                quote_url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={api_key}"
+                q_resp = requests.get(quote_url, timeout=5)
+                
+                profile_url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={api_key}"
+                p_resp = requests.get(profile_url, timeout=5)
+                
+                if q_resp.status_code == 200 and p_resp.status_code == 200:
+                    q_data = q_resp.json()
+                    p_data = p_resp.json()
+                    
+                    if "c" in q_data and q_data["c"] > 0 and p_data.get("name"):
+                        market_cap = p_data.get("marketCapitalization")
+                        if market_cap:
+                            market_cap = market_cap * 1e6  # Finnhub returns market cap in millions
+                            
+                        return json.dumps({
+                            "ticker":         ticker,
+                            "company":        p_data.get("name", ticker),
+                            "price":          q_data.get("c"),
+                            "change":         q_data.get("d"),
+                            "change_pct":     q_data.get("dp"),
+                            "market_cap":     market_cap,
+                            "pe_ratio":       None,
+                            "forward_pe":     None,
+                            "dividend_yield": None,
+                            "52wk_high":      q_data.get("h"),
+                            "52wk_low":       q_data.get("l"),
+                            "volume":         None,
+                            "avg_volume":     None,
+                            "sector":         p_data.get("finnhubIndustry"),
+                            "industry":       p_data.get("finnhubIndustry"),
+                        })
+            except Exception:
+                pass
+
+        # Method 2: Fallback to yfinance
+        tk = yf.Ticker(ticker)
         info = tk.info
         if not info or "regularMarketPrice" not in info:
             fast = tk.fast_info
             price = _safe_float(fast.last_price)
-            return json.dumps({"ticker": ticker.upper(), "price": price, "note": "Limited data available"})
+            return json.dumps({"ticker": ticker, "price": price, "note": "Limited data available"})
 
         price     = info.get("regularMarketPrice") or info.get("currentPrice")
         prev      = info.get("regularMarketPreviousClose") or info.get("previousClose")
@@ -50,8 +95,8 @@ def get_stock_quote(ticker: str) -> str:
         change_pct = (change / prev * 100) if (change is not None and prev) else None
 
         return json.dumps({
-            "ticker":         ticker.upper(),
-            "company":        info.get("longName", ticker.upper()),
+            "ticker":         ticker,
+            "company":        info.get("longName", ticker),
             "price":          price,
             "change":         round(change, 4) if change is not None else None,
             "change_pct":     round(change_pct, 2) if change_pct is not None else None,

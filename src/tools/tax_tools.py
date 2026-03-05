@@ -16,6 +16,9 @@ import yfinance as yf
 from langchain_core.tools import tool
 
 
+import os
+import requests
+
 def _safe_float(val) -> Optional[float]:
     """Coerce *val* to float, returning ``None`` for any non-numeric input."""
     try:
@@ -23,6 +26,22 @@ def _safe_float(val) -> Optional[float]:
     except (TypeError, ValueError):
         return None
 
+def _live_price(ticker: str) -> Optional[float]:
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if api_key:
+        try:
+            url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={api_key}"
+            resp = requests.get(url, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "c" in data and data["c"] > 0:
+                    return float(data["c"])
+        except Exception:
+            pass
+    try:
+        return _safe_float(yf.Ticker(ticker).fast_info.last_price)
+    except Exception:
+        return None
 
 @tool
 def calculate_capital_gains(
@@ -44,8 +63,8 @@ def calculate_capital_gains(
     Note: this is a simplified estimate — consult a tax professional for accuracy.
     """
     try:
-        tk = yf.Ticker(ticker.upper().strip())
-        price = _safe_float(tk.fast_info.last_price)
+        ticker_up = ticker.upper().strip()
+        price = _live_price(ticker_up)
         if price is None:
             return json.dumps({"error": f"Could not get live price for {ticker}"})
 
@@ -104,10 +123,7 @@ def find_tax_loss_opportunities(holdings_json: str) -> str:
             shares   = float(h["shares"])
             avg_cost = float(h.get("avg_cost", 0))
 
-            try:
-                price = _safe_float(yf.Ticker(ticker).fast_info.last_price) or 0.0
-            except Exception:
-                price = 0.0
+            price = _live_price(ticker) or 0.0
 
             current_value = price * shares
             cost_basis    = avg_cost * shares

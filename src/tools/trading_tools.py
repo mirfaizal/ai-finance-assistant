@@ -31,11 +31,25 @@ from src.memory.portfolio_store import PortfolioStore
 
 # ── Low-level yfinance price fetch ────────────────────────────────────────────
 
-def _live_price(ticker: str) -> float:
-    """Fetch the latest market price for *ticker* via yfinance with fallbacks."""
-    tk = yf.Ticker(ticker.upper())
+import os
+import requests
 
-    # Method 1: fast_info
+def _live_price(ticker: str) -> float:
+    """Fetch the latest market price for *ticker* via Finnhub REST API."""
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    if api_key:
+        try:
+            url = f"https://finnhub.io/api/v1/quote?symbol={ticker.upper()}&token={api_key}"
+            resp = requests.get(url, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "c" in data and data["c"] > 0:
+                    return float(data["c"])
+        except Exception:
+            pass
+
+    # Method 2: Fallback to yfinance
+    tk = yf.Ticker(ticker.upper())
     try:
         price = tk.fast_info.last_price
         if price is not None and price > 0:
@@ -43,26 +57,7 @@ def _live_price(ticker: str) -> float:
     except Exception:
         pass
 
-    # Method 2: info dict
-    try:
-        info = tk.info
-        price = info.get("regularMarketPrice") or info.get("currentPrice")
-        if price is not None and price > 0:
-            return float(price)
-    except Exception:
-        pass
-
-    # Method 3: history
-    try:
-        hist = tk.history(period="1d")
-        if not hist.empty and "Close" in hist.columns:
-            price = hist["Close"].iloc[-1]
-            if price is not None and price > 0:
-                return float(price)
-    except Exception:
-        pass
-
-    raise ValueError(f"Could not fetch live price for '{ticker}' due to API rate limits. Please try again later.")
+    raise ValueError(f"Could not fetch live price for '{ticker}'. Please try again later.")
 
 
 # ── Session-bound tool factory ────────────────────────────────────────────────

@@ -245,25 +245,51 @@ def market_quotes(symbols: str = "SPY,AAPL,TSLA,NVDA,BTC-USD") -> dict:
     symbols: comma-separated, e.g. ?symbols=AAPL,NVDA,TSLA
     """
     import yfinance as yf
+    import os
+    import requests
 
     result = {}
+    api_key = os.environ.get("FINNHUB_API_KEY")
+    
     for sym in symbols.split(","):
         sym = sym.strip().upper()
         if not sym:
             continue
-        try:
-            tk = yf.Ticker(sym)
-            fast = tk.fast_info
-            price = float(fast.last_price or 0)
-            prev  = float(fast.previous_close or 0)
-            chg_pct = round((price - prev) / prev * 100, 2) if prev else 0.0
-            result[sym] = {
-                "price":      round(price, 2),
-                "change_pct": chg_pct,
-                "up":         chg_pct >= 0,
-            }
-        except Exception:
-            result[sym] = {"price": None, "change_pct": None, "up": None}
+            
+        success = False
+        if api_key:
+            try:
+                url = f"https://finnhub.io/api/v1/quote?symbol={sym}&token={api_key}"
+                resp = requests.get(url, timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if "c" in data and data["c"] > 0:
+                        price = float(data["c"])
+                        prev = float(data.get("pc") or 0)
+                        chg_pct = round((price - prev) / prev * 100, 2) if prev else 0.0
+                        result[sym] = {
+                            "price":      round(price, 2),
+                            "change_pct": chg_pct,
+                            "up":         chg_pct >= 0,
+                        }
+                        success = True
+            except Exception:
+                pass
+                
+        if not success:
+            try:
+                tk = yf.Ticker(sym)
+                fast = tk.fast_info
+                price = float(fast.last_price or 0)
+                prev  = float(fast.previous_close or 0)
+                chg_pct = round((price - prev) / prev * 100, 2) if prev else 0.0
+                result[sym] = {
+                    "price":      round(price, 2),
+                    "change_pct": chg_pct,
+                    "up":         chg_pct >= 0,
+                }
+            except Exception:
+                result[sym] = {"price": None, "change_pct": None, "up": None}
     return result
 
 
