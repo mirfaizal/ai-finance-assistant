@@ -248,6 +248,7 @@ def market_quotes(symbols: str = "SPY,AAPL,TSLA,NVDA,BTC-USD") -> dict:
     import os
     import requests
 
+    FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
     result = {}
     api_key = os.environ.get("FINNHUB_API_KEY")
     
@@ -259,7 +260,7 @@ def market_quotes(symbols: str = "SPY,AAPL,TSLA,NVDA,BTC-USD") -> dict:
         success = False
         if api_key:
             try:
-                url = f"https://finnhub.io/api/v1/quote?symbol={sym}&token={api_key}"
+                url = f"{FINNHUB_BASE_URL}/quote?symbol={sym}&token={api_key}"
                 resp = requests.get(url, timeout=5)
                 if resp.status_code == 200:
                     data = resp.json()

@@ -34,12 +34,14 @@ from src.memory.portfolio_store import PortfolioStore
 import os
 import requests
 
+FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+
 def _live_price(ticker: str) -> float:
     """Fetch the latest market price for *ticker* via Finnhub REST API."""
     api_key = os.environ.get("FINNHUB_API_KEY")
     if api_key:
         try:
-            url = f"https://finnhub.io/api/v1/quote?symbol={ticker.upper()}&token={api_key}"
+            url = f"{FINNHUB_BASE_URL}/quote?symbol={ticker.upper()}&token={api_key}"
             resp = requests.get(url, timeout=5)
             if resp.status_code == 200:
                 data = resp.json()

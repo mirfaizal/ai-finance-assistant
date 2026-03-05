@@ -19,6 +19,8 @@ from langchain_core.tools import tool
 import os
 import requests
 
+FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+
 def _safe_float(val) -> Optional[float]:
     """Coerce *val* to float, returning ``None`` for any non-numeric input."""
     try:
@@ -30,7 +32,7 @@ def _live_price(ticker: str) -> Optional[float]:
     api_key = os.environ.get("FINNHUB_API_KEY")
     if api_key:
         try:
-            url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={api_key}"
+            url = f"{FINNHUB_BASE_URL}/quote?symbol={ticker}&token={api_key}"
             resp = requests.get(url, timeout=5)
             if resp.status_code == 200:
                 data = resp.json()

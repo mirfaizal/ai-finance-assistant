@@ -30,6 +30,8 @@ def _safe_float(val) -> Optional[float]:
 import os
 import requests
 
+FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+
 # Global in-memory cache for company names to prevent redundant yfinance API calls
 _COMPANY_NAME_CACHE: dict[str, str] = {}
 
@@ -45,7 +47,7 @@ def _fetch_company_name(ticker: str, retries: int = 3, backoff: float = 2.0) -> 
     api_key = os.environ.get("FINNHUB_API_KEY")
     if api_key:
         try:
-            url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker_upper}&token={api_key}"
+            url = f"{FINNHUB_BASE_URL}/stock/profile2?symbol={ticker_upper}&token={api_key}"
             resp = requests.get(url, timeout=5)
             if resp.status_code == 200:
                 data = resp.json()
@@ -96,7 +98,7 @@ def analyze_portfolio(holdings_json: str) -> str:
         if api_key:
             for tk_sym in tickers:
                 try:
-                    url = f"https://finnhub.io/api/v1/quote?symbol={tk_sym}&token={api_key}"
+                    url = f"{FINNHUB_BASE_URL}/quote?symbol={tk_sym}&token={api_key}"
                     resp = requests.get(url, timeout=5)
                     if resp.status_code == 200:
                         data = resp.json()

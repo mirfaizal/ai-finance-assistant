@@ -31,6 +31,8 @@ def _safe_float(val) -> Optional[float]:
 import os
 import requests
 
+FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
+
 @tool
 def get_stock_quote(ticker: str) -> str:
     """
@@ -46,10 +48,10 @@ def get_stock_quote(ticker: str) -> str:
         # Method 1: Finnhub REST API
         if api_key:
             try:
-                quote_url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={api_key}"
+                quote_url = f"{FINNHUB_BASE_URL}/quote?symbol={ticker}&token={api_key}"
                 q_resp = requests.get(quote_url, timeout=5)
                 
-                profile_url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={api_key}"
+                profile_url = f"{FINNHUB_BASE_URL}/stock/profile2?symbol={ticker}&token={api_key}"
                 p_resp = requests.get(profile_url, timeout=5)
                 
                 if q_resp.status_code == 200 and p_resp.status_code == 200:
