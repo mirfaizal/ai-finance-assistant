@@ -43,14 +43,17 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+ENV AUTH0_DOMAIN=${AUTH0_DOMAIN}
+ENV AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+
 WORKDIR /app
 
 # Install system packages: nginx (web server), supervisor (process manager),
 # curl (health-check)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        nginx \
-        supervisor \
-        curl \
+    nginx \
+    supervisor \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python dependencies ───────────────────────────────────────────────────────
@@ -67,7 +70,7 @@ RUN mkdir -p /app/data
 # ── Nginx configuration ───────────────────────────────────────────────────────
 # Remove the default site and install our HF-specific config
 RUN rm -f /etc/nginx/sites-enabled/default \
-          /etc/nginx/conf.d/default.conf
+    /etc/nginx/conf.d/default.conf
 COPY deploy/nginx_hf.conf /etc/nginx/conf.d/app.conf
 
 # ── Copy compiled React app from Stage 1 ─────────────────────────────────────
