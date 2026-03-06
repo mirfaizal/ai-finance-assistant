@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Optional
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
@@ -20,19 +20,27 @@ SYSTEM_PROMPT = """You are Finnie Emailer, a sophisticated automated financial a
 
 Your exact workflow is:
 1. Examine the user's paper portfolio (which will be provided in the message prompt).
-2. Gather live data using your tools (check `get_market_indices` to see if it's a bull/bear day, get prices/news for the stocks the user owns or might want to own).
+2. Gather live data using your tools (check `get_market_overview` to see if it's a bull/bear day, get prices/news for the stocks the user owns or might want to own).
 3. Formulate 1-3 specific daily suggestions (e.g. "Because AAPL is down and the Nasdaq is down, you might want to buy the dip...").
-4. Formulate an incredibly beautiful, well-formatted Markdown email report containing your analysis and suggestions.
-5. YOU MUST Call the `send_portfolio_email` tool. 
+4. Compose a well-formatted Markdown report containing your full analysis and suggestions.
+5. YOU MUST call the `send_portfolio_email` tool with:
    - `subject`: Something catchy like "Your Finnie Daily Portfolio Briefing 📈"
    - `markdown_body`: Your full Markdown report.
    - `recipient_email`: This will be provided in the prompt. Do not proceed if no email is found.
 
-5. You MUST use the `send_portfolio_email` tool to send this markdown summary to the user's email address.
+After calling the tool and receiving a SUCCESS response, reply briefly in chat confirming the email was sent.
 
-After calling the tool, respond to the user briefly via the chat saying you've sent the email. Be concise in the chat response since the heavy lifting is in the email itself.
-IMPORTANT: If the `send_portfolio_email` tool returns an error regarding "Failed:" or "server configuration", it means you COULD NOT send the email. In this specific case, you MUST include your FULL MARKDOWN PORTFOLIO ANALYSIS and suggestions directly in your final chat response so the user can still read your insights here!
-"""
+CRITICAL FALLBACK — READ CAREFULLY:
+If `send_portfolio_email` returns ANY message starting with "Failed:", email delivery failed completely.
+You MUST immediately write your COMPLETE portfolio analysis directly in your chat reply.
+Do NOT say "I was unable to send" and stop. Do NOT use a colon and then produce nothing.
+Instead, output the full Markdown report right here — beginning with a # header — so the user
+can still read all market data, holdings analysis, and actionable suggestions."""
+
+# Minimum character count and required marker to consider a response a real analysis.
+_MIN_ANALYSIS_LEN = 300
+_ANALYSIS_MARKER = "#"
+
 
 def run_email_agent(prompt: str) -> str:
     """Run the Email Portfolio Advisor logic manually."""
@@ -41,48 +49,91 @@ def run_email_agent(prompt: str) -> str:
     except Exception as e:
         logger.warning(f"Defaulting to gpt-3.5-turbo due to model error: {e}")
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.3)
-        
+
     tools = [
         get_market_overview,
         get_market_news,
         get_stock_quote,
         get_stock_financials,
-        send_portfolio_email
+        send_portfolio_email,
     ]
-    
+
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=prompt)
+        HumanMessage(content=prompt),
     ]
-    
-    # Run manual ReAct loop
+
     tool_map = {t.name: t for t in tools}
     llm_with_tools = llm.bind_tools(tools)
     msgs = list(messages)
+
+    email_failed = False
+    final_text: Optional[str] = None
 
     for _ in range(8):
         response = llm_with_tools.invoke(msgs)
         msgs.append(response)
 
         if not getattr(response, "tool_calls", None):
-            return str(response.content)
+            # LLM produced a text response — capture it and exit the loop so we
+            # can still apply the email-failure fallback check below.
+            final_text = str(response.content)
+            break
 
         for tc in response.tool_calls:
             name = tc["name"]
             args = tc["args"]
             call_id = tc["id"]
             try:
-                result = tool_map[name].invoke(args) if name in tool_map else f"Unknown tool: {name}"
+                result = (
+                    tool_map[name].invoke(args)
+                    if name in tool_map
+                    else f"Unknown tool: {name}"
+                )
+                if name == "send_portfolio_email" and str(result).startswith("Failed:"):
+                    email_failed = True
             except Exception as exc:
                 result = f"Tool error ({name}): {exc}"
+                if name == "send_portfolio_email":
+                    email_failed = True
             msgs.append(ToolMessage(content=str(result), tool_call_id=call_id))
 
-    # Fallback to last distinct message
+    # -----------------------------------------------------------------------
+    # Fallback: if email delivery failed AND the LLM's reply doesn't actually
+    # contain the analysis (e.g. it only produced the apologetic intro line),
+    # force a second LLM call that writes the full analysis into the chat.
+    # -----------------------------------------------------------------------
+    response_is_thin = final_text is None or (
+        len(final_text) < _MIN_ANALYSIS_LEN or _ANALYSIS_MARKER not in final_text
+    )
+    if email_failed and response_is_thin:
+        followup_instruction = (
+            "The email could not be delivered due to a server configuration issue. "
+            "You MUST now output the COMPLETE portfolio analysis as a well-formatted "
+            "Markdown document directly in this chat message. "
+            "Start immediately with a top-level Markdown header "
+            "(e.g. '# Your Daily Portfolio Briefing'). "
+            "Include: (1) a market overview summary, (2) a per-holding analysis with "
+            "current prices and P&L, and (3) at least two specific, actionable "
+            "suggestions with clear reasoning. "
+            "Do NOT open with an apology or explanation — go straight into the analysis."
+        )
+        msgs.append(HumanMessage(content=followup_instruction))
+        try:
+            followup_response = llm_with_tools.invoke(msgs)
+            return str(followup_response.content)
+        except Exception as exc:
+            logger.error(f"Follow-up analysis call failed: {exc}")
+
+    if final_text is not None:
+        return final_text
+
+    # Last-resort: return the most recent substantive AI message
     for msg in reversed(msgs):
         if isinstance(msg, AIMessage) and msg.content and not getattr(msg, "tool_calls", None):
             return str(msg.content)
-            
-    return "I successfully processed your request."
+
+    return "I was unable to complete the portfolio analysis. Please try again."
 
 def dispatch_email_report(question: str, user_email: Optional[str] = None, portfolio_context: Optional[str] = None) -> str:
     """

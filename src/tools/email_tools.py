@@ -5,6 +5,12 @@ from typing import Optional
 import requests
 from langchain_core.tools import tool
 
+try:
+    import markdown as _md_lib  # type: ignore
+    _MD_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _MD_AVAILABLE = False
+
 logger = logging.getLogger("email_tools")
 
 SENDGRID_ENDPOINT = "https://api.sendgrid.com/v3/mail/send"
@@ -30,13 +36,23 @@ def send_portfolio_email(
     # Use the configured FROM address if provided, otherwise a generic placeholder.
     from_email = os.getenv("SMTP_USER", "no-reply@example.com")
 
-    # SendGrid expects both plain‑text and HTML parts. We'll send the markdown as HTML.
+    # Convert markdown body to HTML for the rich-text part of the email.
+    if _MD_AVAILABLE:
+        html_body = _md_lib.markdown(
+            markdown_body,
+            extensions=["tables", "fenced_code", "nl2br"],
+        )
+    else:  # pragma: no cover
+        # Basic fallback: wrap in <pre> so whitespace is preserved.
+        html_body = f"<pre>{markdown_body}</pre>"
+
+    # SendGrid expects both plain‑text and HTML parts.
     payload = {
         "personalizations": [{"to": [{"email": recipient_email}], "subject": subject}],
         "from": {"email": from_email},
         "content": [
             {"type": "text/plain", "value": markdown_body},
-            {"type": "text/html", "value": markdown_body},
+            {"type": "text/html", "value": html_body},
         ],
     }
 

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { BarChart, Bar, Cell, LabelList } from 'recharts';
 import { BASE_URL } from '../lib/config';
-import { getActiveSessionId, getBackendSessionId } from '../lib/storage';
+import { usePortfolioSummary } from '../lib/hooks/usePortfolioSummary';
 
 interface ChartPoint { date: string; value: number; }
 interface AllocBar { name: string; pct: number; dollarValue: string; fill: string; }
@@ -18,8 +18,14 @@ interface PortfolioSummary {
 export function MarketsPage() {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
-  const [portfolioLoaded, setPortfolioLoaded] = useState(false);
+
+  // Use the shared hook so auth headers (X-User-Email / Bearer) are sent correctly,
+  // just like PortfolioChart.tsx does.
+  const { data: portfolioData, loaded: portfolioLoaded } = usePortfolioSummary();
+  const portfolio: PortfolioSummary | null =
+    portfolioData && (portfolioData.summary?.total_value ?? 0) > 0
+      ? (portfolioData as unknown as PortfolioSummary)
+      : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -50,26 +56,6 @@ export function MarketsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    const frontendSid = getActiveSessionId();
-    if (!frontendSid) return;
-    const sessionId = getBackendSessionId(frontendSid) ?? frontendSid;
-    fetch(`${BASE_URL}/portfolio/summary/${sessionId}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { setPortfolioLoaded(true); if (data?.summary?.total_value > 0) setPortfolio(data); })
-      .catch(() => { setPortfolioLoaded(true); });
-    const onUpdate = () => {
-      const sid = getBackendSessionId(getActiveSessionId() ?? '') ?? getActiveSessionId() ?? '';
-      if (!sid) return;
-      fetch(`${BASE_URL}/portfolio/summary/${sid}`)
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => { if (data?.summary?.total_value > 0) setPortfolio(data); })
-        .catch(() => {});
-    };
-    window.addEventListener('portfolioUpdated', onUpdate);
-    return () => window.removeEventListener('portfolioUpdated', onUpdate);
   }, []);
 
   const allocBars: AllocBar[] = portfolio && portfolio.holdings.length > 0
