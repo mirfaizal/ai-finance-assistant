@@ -7,14 +7,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from src.workflow.orchestrator import process_query
 from src.memory.conversation_store import ConversationStore
-from src.web_app.auth import verify_token
 from src.memory.portfolio_store import PortfolioStore
+from src.memory.notification_store import NotificationStore
+from src.web_app.auth import verify_token
+from src.agents.alert_agent.alert_agent import generate_login_alert
 from src.utils.logging import get_logger
 from src.utils.logging import get_logger
 from src.rag.retriever import get_rag_context

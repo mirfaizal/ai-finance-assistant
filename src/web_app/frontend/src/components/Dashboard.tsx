@@ -9,6 +9,8 @@ import {
   RECOMMENDED_LEARNING,
 } from '../lib/mockData';
 import { usePortfolioSummary } from '../lib/hooks/usePortfolioSummary';
+import { useNotifications } from '../lib/hooks/useNotifications';
+import ReactMarkdown from 'react-markdown';
 
 interface DashboardProps {
   onStartChat: (prefill?: string) => void;
@@ -38,11 +40,21 @@ export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
   };
 
   const { data, loaded } = usePortfolioSummary();
+  const { notifications, triggerLoginAlert, dismissNotification } = useNotifications();
+
   useEffect(() => {
     applyPortfolioData(data);
     // reflect that we've loaded portfolio data (even if empty)
     setPortfolioLoaded(loaded);
   }, [data, loaded]);
+
+  // Trigger login alert exactly once when dashboard mounts and we have a user
+  useEffect(() => {
+    if (user) {
+      triggerLoginAlert();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Before API responds show mock; once loaded always show live (even if $0)
   const displayBalance = portfolioLoaded ? (live?.totalBalance ?? 0) : m.totalBalance;
@@ -200,28 +212,87 @@ export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
               return alert;
             });
 
-            return live.map((alert, i) => (
-              <motion.button
-                key={alert.id}
-                className="insight-card alert"
-                style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none', width: '100%', padding: 0 }}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.24 + i * 0.06 }}
-                onClick={() => onStartChat(alert.chatPrompt)}
-                title={alert.actionLabel}
-              >
-                <span className="insight-dot" style={{ background: alert.dotColor }} />
-                <div className="insight-content">
-                  <div className="insight-title">{alert.title}</div>
-                  <div className="insight-desc">{alert.desc}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                    <span className="insight-time">{alert.timeAgo}</span>
-                    <span style={{ fontSize: '0.7rem', color: alert.dotColor, opacity: 0.85 }}>{alert.actionLabel}</span>
-                  </div>
-                </div>
-              </motion.button>
-            ));
+            return (
+              <>
+                {/* Dynamic AI Generated Notifications */}
+                {notifications.map((notif, i) => (
+                  <motion.div
+                    key={notif.id}
+                    className="insight-card alert"
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: i * 0.05, type: 'spring' }}
+                    style={{ position: 'relative', border: '1px solid rgba(251, 113, 133, 0.3)', background: 'linear-gradient(to bottom right, rgba(251, 113, 133, 0.05), rgba(0,0,0,0))' }}
+                  >
+                    <span className="insight-dot" style={{ background: '#fb7185', boxShadow: '0 0 8px #fb7185' }} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); dismissNotification(notif.id); }}
+                      style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                      title="Dismiss"
+                    >
+                      ×
+                    </button>
+                    <div className="insight-content" style={{ paddingRight: 16 }}>
+                      <div className="insight-title" style={{ color: '#fb7185' }}>{notif.title}</div>
+                      <div className="insight-desc markdown-alert-body" style={{ marginTop: 8, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                        <ReactMarkdown
+                          components={{
+                            a: ({ node, ...props }) => {
+                              // If it's a relative link to assistant, hijack it
+                              if (props.href?.startsWith('/assistant?q=')) {
+                                const q = new URLSearchParams(props.href.split('?')[1]).get('q');
+                                return (
+                                  <a
+                                    {...props}
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      if (q) onStartChat(q);
+                                    }}
+                                    style={{ color: '#38bdf8', textDecoration: 'underline' }}
+                                  />
+                                );
+                              }
+                              return <a {...props} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8' }} />;
+                            }
+                          }}
+                        >
+                          {notif.content}
+                        </ReactMarkdown>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                        <span className="insight-time">Just now</span>
+                        <span style={{ fontSize: '0.7rem', color: '#fb7185', opacity: 0.85 }}>Generated by Finnie Emailer ✨</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Mock/Static Fallback Alers */}
+                {live.map((alert, i) => (
+                  <motion.button
+                    key={alert.id}
+                    className="insight-card alert"
+                    style={{ cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none', width: '100%', padding: 0 }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.24 + i * 0.06 }}
+                    onClick={() => onStartChat(alert.chatPrompt)}
+                    title={alert.actionLabel}
+                  >
+                    <span className="insight-dot" style={{ background: alert.dotColor }} />
+                    <div className="insight-content">
+                      <div className="insight-title">{alert.title}</div>
+                      <div className="insight-desc">{alert.desc}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <span className="insight-time">{alert.timeAgo}</span>
+                        <span style={{ fontSize: '0.7rem', color: alert.dotColor, opacity: 0.85 }}>{alert.actionLabel}</span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
+              </>
+            );
           })()}
         </div>
       </section>
