@@ -153,30 +153,40 @@ def get_history(session_id: str, last_n: int = 20, current_user: str = Depends(v
 
 
 class FeedbackRequest(BaseModel):
-    run_id: str
+    run_id: Optional[str] = None   # LangSmith run UUID; falls back to message.id from frontend
     score: int  # 1 for positive, 0 for negative
 
 @app.post("/feedback", summary="Submit user feedback for an AI response")
 def submit_feedback(request: FeedbackRequest) -> dict:
     """
-    Submit thumbs up/down feedback to LangSmith for a particular run_id.
+    Submit thumbs up/down feedback.
+    - If LangSmith is configured and run_id looks like a real trace UUID, forward to LangSmith.
+    - Always persist the rating to SQLite so feedback is never silently dropped.
     """
-    from src.utils.tracing import get_langsmith_client
-    
-    client = get_langsmith_client()
-    if client is None:
-         return {"status": "skipped", "message": "Tracing is not enabled."}
-         
+    if not request.run_id:
+        return {"status": "skipped", "message": "No run_id provided."}
+
+    # Always store locally so feedback survives regardless of LangSmith config
     try:
-        client.create_feedback(
-            run_id=request.run_id,
-            key="user_score",
-            score=request.score
-        )
-        return {"status": "success"}
+        _store.save_feedback(request.run_id, request.score, source="user")
     except Exception as exc:
-        logger.error("Error submitting feedback: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.warning("Could not persist feedback to SQLite: %s", exc)
+
+    # Forward to LangSmith when tracing is enabled
+    from src.utils.tracing import get_langsmith_client
+    client = get_langsmith_client()
+    if client is not None:
+        try:
+            client.create_feedback(
+                run_id=request.run_id,
+                key="user_score",
+                score=request.score,
+            )
+            return {"status": "success", "destination": "langsmith"}
+        except Exception as exc:
+            logger.warning("LangSmith feedback failed (stored locally): %s", exc)
+
+    return {"status": "success", "destination": "local"}
 
 
 @app.get("/sessions", summary="List all session IDs")

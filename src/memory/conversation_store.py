@@ -60,6 +60,14 @@ class ConversationStore:
 
                 CREATE INDEX IF NOT EXISTS idx_messages_session
                     ON messages(session_id, id);
+
+                CREATE TABLE IF NOT EXISTS feedback (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id      TEXT    NOT NULL,
+                    score       INTEGER NOT NULL CHECK(score IN (0, 1)),
+                    source      TEXT    NOT NULL DEFAULT 'local',
+                    created_at  TEXT    NOT NULL
+                );
             """)
 
     # ── public API ────────────────────────────────────────────────────────────
@@ -161,6 +169,14 @@ class ConversationStore:
                 "SELECT session_id FROM sessions ORDER BY created_at DESC"
             ).fetchall()
         return [r["session_id"] for r in rows]
+
+    def save_feedback(self, run_id: str, score: int, source: str = "local") -> None:
+        """Persist a thumbs-up (1) or thumbs-down (0) rating for a response."""
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO feedback (run_id, score, source, created_at) VALUES (?, ?, ?, ?)",
+                (run_id, score, source, datetime.utcnow().isoformat()),
+            )
 
     @staticmethod
     def new_session_id() -> str:

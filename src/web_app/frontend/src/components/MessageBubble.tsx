@@ -18,11 +18,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const agentColor = agent?.color ?? '#14b8a6';
     const agentLabel = agent?.title ?? 'Finnie';
 
+    // Use LangSmith run_id when available; fall back to the local message id
+    // so thumbs are always shown regardless of whether tracing is configured.
+    const feedbackId = message.run_id ?? message.id;
+
     const handleFeedback = async (score: number) => {
-        if (!message.run_id || feedbackState !== 'none') return;
+        if (!feedbackId || feedbackState !== 'none') return;
         setFeedbackState('loading');
         try {
-            await sendFeedback(message.run_id, score);
+            await sendFeedback(feedbackId, score);
             setFeedbackState('success');
         } catch (err) {
             console.error('Failed to send feedback', err);
@@ -69,7 +73,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     </div>
                 )}
 
-                {!isUser && message.run_id && (
+                {!isUser && (
                     <div className="msg-feedback" style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
                         {feedbackState === 'none' || feedbackState === 'error' ? (
                             <>
