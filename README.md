@@ -54,7 +54,7 @@ A **production-ready, truly agentic AI system** for financial education, built w
 
 ## Features
 
-- **9 Specialized AI Agents** — each an expert in a specific financial domain
+- **11 Specialized AI Agents** — each an expert in a specific financial domain
 - **LLM-Based Routing** — GPT-4.1-mini classifies every question and routes to the best agent; falls back to keyword scoring if the LLM call fails
 - **Persistent Conversation Memory** — SQLite WAL database stores every session; history injected into agent prompts for multi-turn awareness
 - **Memory Synthesizer Agent** — GPT-compresses conversation history into a concise summary when turns exceed 5
@@ -66,7 +66,7 @@ A **production-ready, truly agentic AI system** for financial education, built w
 - **Paper Trading** — buy/sell stocks with live prices; positions and trade history stored in SQLite WAL
 - **MCP Server** — 6 tools exposed via `fastmcp` for Claude Desktop integration (bonus feature)
 - **LangSmith Observability** — every ReAct tool call, routing decision, and agent run traced
-- **FastAPI Backend** — 27 async REST endpoints with Pydantic validation
+- **FastAPI Backend** — 30 async REST endpoints with Pydantic validation
 - **React + TypeScript Frontend** — live dashboard: market chart, portfolio pie, ticker strip, agent chat
 - **Docker** — `Dockerfile.backend` + `docker-compose.yml` for one-command local deployment
 - **393 Tests** — 24 test modules across agents, tools, orchestrator, memory stores, API, and MCP server
@@ -142,7 +142,7 @@ Session 1, Turn 2:
 
 | Component | File | Responsibility |
 |---|---|---|
-| FastAPI App | `src/web_app/server.py` | 27 REST endpoints, CORS, Pydantic validation |
+| FastAPI App | `src/web_app/server.py` | 30 REST endpoints, CORS, Pydantic validation |
 | Orchestrator | `src/workflow/orchestrator.py` | LangGraph StateGraph + MemorySaver + process_query |
 | LLM Router | `src/core/router.py` | GPT-4.1-mini routing + keyword fallback |
 | Conversation Store | `src/memory/conversation_store.py` | SQLite WAL — sessions, messages, summaries |
@@ -158,7 +158,7 @@ Session 1, Turn 2:
 
 ## Agents
 
-Nine specialized agents — the LLM router dispatches based on GPT-4.1-mini classification of the question plus conversation history. Keyword scoring acts as fallback.
+Eleven specialized agents — the LLM router dispatches based on GPT-4.1-mini classification of the question plus conversation history. Keyword scoring acts as fallback.
 
 | Agent | Module | Entry function | Triggered by | Tools | ReAct Loop |
 |---|---|---|---|---|---|
@@ -170,6 +170,8 @@ Nine specialized agents — the LLM router dispatches based on GPT-4.1-mini clas
 | **Tax Education** | `tax_education_agent` | `explain_tax_concepts` | "tax", "capital gains", "IRS", "deduction" | `TAX_TOOLS`, Pinecone | ✅ |
 | **Stock Analyst** | `stock_agent` | `ask_stock_agent` | "price", "AAPL", "PE ratio", ticker symbols | `STOCK_TOOLS` | ✅ |
 | **Trading Agent** | `trading_agent` | `ask_trading_agent` | "buy", "sell", "trade", "paper trading", "position" | `TRADING_TOOLS` (SQLite) | ✅ |
+| **Email Delivery** `NEW` | `email_agent` | `send_email` | "email", "send my portfolio" | `email_tools` | ✅ |
+| **Login Alert** `NEW` | `alert_agent` | `generate_login_alert` | Internal — triggered on user login | `PORTFOLIO_TOOLS` | ✅ |
 | **Memory Synthesizer** | `memory_synthesizer_agent` | `synthesize_memory` | Internal — triggered when turns > 5 | GPT compressor | — |
 
 ### Stock Agent — `create_react_agent` ReAct Loop
@@ -631,6 +633,12 @@ workflow:
 | `agents.max_iterations` | `10` | LangGraph workflow cap |
 | `agents.timeout` | `300` | Request timeout in seconds |
 
+### Environment Variables (.env or Hugging Face Secrets)
+- `OPENAI_API_KEY`: Required for LLM.
+- `TAVILY_API_KEY`: Required for web search.
+- `PINECONE_API_KEY` / `PINECONE_INDEX`: Required for RAG.
+- `SMTP_SERVER` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD`: Required for the Email Delivery Agent. Generate a 16-character Google App Password for the `SMTP_PASSWORD`.
+
 ---
 
 ## Running Tests
@@ -667,6 +675,8 @@ ai_finance_assistant/
 │   │   ├── tax_education_agent/       ← Tax concepts education         [TAX_TOOLS ReAct + RAG]
 │   │   ├── stock_agent/               ← Stock lookups & analysis       [STOCK_TOOLS ReAct]
 │   │   ├── trading_agent/             ← Paper buy/sell/positions        [TRADING_TOOLS ReAct]
+│   │   ├── email_agent/               ← Email portfolio analysis & recommendations [ReAct]
+│   │   ├── alert_agent/               ← Generates actionable dashboard login insights [ReAct]
 │   │   └── memory_synthesizer_agent/  ← GPT history compressor          (auto @ turn > 5)
 │   ├── core/
 │   │   ├── base_agent.py              ← Abstract base class

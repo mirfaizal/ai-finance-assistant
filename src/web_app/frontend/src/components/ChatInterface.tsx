@@ -51,6 +51,12 @@ const AGENT_SUGGESTIONS = [
         color: '#22d3ee',
         examples: ['Buy 5 shares of AAPL', 'Sell 2 TSLA', 'Show my current positions', 'What is my paper trading P&L?'],
     },
+    {
+        icon: '📧',
+        label: 'Email Assistant',
+        color: '#f43f5e',
+        examples: ['Email my portfolio analysis', 'Send recommendations to my email'],
+    },
 ];
 import { MessageBubble } from './MessageBubble';
 import { AgentBadge } from './AgentBadge';
@@ -216,6 +222,7 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
                             <span style={{ color: '#ec4899' }}>📰 News Synthesizer</span>
                             <span style={{ color: '#f97316' }}>🔬 Stock Analyst</span>
                             <span style={{ color: '#22d3ee' }}>💹 Trading Agent</span>
+                            <span style={{ color: '#f43f5e' }}>📧 Email Assistant</span>
                         </div>
                         <p className="empty-hint">The right agent is automatically selected based on your question.</p>
                     </motion.div>
