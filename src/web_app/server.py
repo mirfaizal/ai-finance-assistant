@@ -543,6 +543,34 @@ def portfolio_summary(session_id: str, x_user_email: Optional[str] = Header(None
             "error": str(exc),
         }
 
+# ── Notifications API ─────────────────────────────────────────────────────────
+
+@app.post("/notifications/trigger-login-alert", summary="Trigger a background login insight alert")
+def trigger_login_alert(background_tasks: BackgroundTasks, x_user_email: Optional[str] = Header(None)):
+    """Triggers the alert agent in the background to analyze the portfolio on login."""
+    if not x_user_email:
+        raise HTTPException(status_code=401, detail="Must be logged in to trigger alerts")
+        
+    holdings = _portfolio_store.get_holdings(x_user_email)
+    holdings_str = None
+    if holdings:
+        import json as _json
+        holdings_str = _json.dumps(holdings)
+        
+    background_tasks.add_task(generate_login_alert, x_user_email, holdings_str)
+    return {"status": "processing_in_background"}
+
+@app.get("/notifications", summary="Get unread notifications")
+def get_notifications(x_user_email: Optional[str] = Header(None)):
+    if not x_user_email:
+        return {"items": []}
+    return {"items": NotificationStore.get_unread(x_user_email)}
+
+@app.delete("/notifications/{notif_id}", summary="Mark a notification as read")
+def dismiss_notification(notif_id: str, x_user_email: Optional[str] = Header(None)):
+    if not x_user_email:
+        return {"success": False}
+    return {"success": NotificationStore.mark_read(x_user_email, notif_id)}
 
 @app.get("/market/news", summary="Latest financial news headlines via yfinance")
 def market_news(tickers: str = "SPY,AAPL,MSFT,NVDA,TSLA", limit: int = 15) -> dict:

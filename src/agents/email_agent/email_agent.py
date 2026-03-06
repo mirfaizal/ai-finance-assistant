@@ -28,7 +28,10 @@ Your exact workflow is:
    - `markdown_body`: Your full Markdown report.
    - `recipient_email`: This will be provided in the prompt. Do not proceed if no email is found.
 
+5. You MUST use the `send_portfolio_email` tool to send this markdown summary to the user's email address.
+
 After calling the tool, respond to the user briefly via the chat saying you've sent the email. Be concise in the chat response since the heavy lifting is in the email itself.
+IMPORTANT: If the `send_portfolio_email` tool returns an error regarding "Failed:" or "server configuration", it means you COULD NOT send the email. In this specific case, you MUST include your FULL MARKDOWN PORTFOLIO ANALYSIS and suggestions directly in your final chat response so the user can still read your insights here!
 """
 
 def run_email_agent(prompt: str) -> str:
