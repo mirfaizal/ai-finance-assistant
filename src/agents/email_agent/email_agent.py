@@ -44,11 +44,7 @@ _ANALYSIS_MARKER = "#"
 
 def run_email_agent(prompt: str) -> str:
     """Run the Email Portfolio Advisor logic manually."""
-    try:
-        llm = ChatOpenAI(model="gpt-4", temperature=0.3)
-    except Exception as e:
-        logger.warning(f"Defaulting to gpt-4o-mini due to model error: {e}")
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
 
     tools = [
         get_market_overview,

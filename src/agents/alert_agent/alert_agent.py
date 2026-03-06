@@ -26,12 +26,8 @@ Your exact workflow:
 
 def run_alert_agent(prompt: str) -> str:
     """Run the Login Alert logic manually without langgraph.prebuilt."""
-    try:
-        # We can use gpt-4.1-mini as it's faster for simple banner text
-        llm = ChatOpenAI(model="gpt-4", temperature=0.5) 
-    except Exception as e:
-        logger.warning(f"Defaulting to gpt-4o-mini due to model error: {e}")
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
+    # Using gpt-4o-mini for cost efficiency - sufficient for simple alert text
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
         
     tools = [
         get_market_overview,
