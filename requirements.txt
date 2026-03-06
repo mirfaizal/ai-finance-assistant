@@ -54,6 +54,7 @@ fastmcp
 # langchain-pinecone: PineconeVectorStore (official LangChain integration)
 langchain>=0.2.0
 langchain-pinecone>=0.2.0
+markdown>=3.5.0
 
 # --- Optional / future modules (commented out until needed) ---
 # faiss-cpu>=1.7.4
