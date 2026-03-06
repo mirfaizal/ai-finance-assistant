@@ -2,11 +2,11 @@ import logging
 from typing import Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 
-from ...tools.market_tools import get_market_indices, get_market_news
-from ...tools.stock_tools import get_stock_price, get_company_info
+from ...tools.market_tools import get_market_overview
+from ...tools.news_tools import get_market_news
+from ...tools.stock_tools import get_stock_quote, get_stock_financials
 from ...tools.email_tools import send_portfolio_email
 
 # NOTE: We can't use analyze_portfolio natively here because analyzing the portfolio
@@ -31,8 +31,8 @@ Your exact workflow is:
 After calling the tool, respond to the user briefly via the chat saying you've sent the email. Be concise in the chat response since the heavy lifting is in the email itself.
 """
 
-def create_email_agent() -> Any:
-    """Create the Email Portfolio Advisor ReAct agent."""
+def run_email_agent(prompt: str) -> str:
+    """Run the Email Portfolio Advisor logic manually."""
     try:
         llm = ChatOpenAI(model="gpt-4", temperature=0.3)
     except Exception as e:
@@ -40,14 +40,46 @@ def create_email_agent() -> Any:
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.3)
         
     tools = [
-        get_market_indices,
+        get_market_overview,
         get_market_news,
-        get_stock_price,
-        get_company_info,
+        get_stock_quote,
+        get_stock_financials,
         send_portfolio_email
     ]
     
-    return create_react_agent(llm, tools=tools, state_modifier=SYSTEM_PROMPT)
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=prompt)
+    ]
+    
+    # Run manual ReAct loop
+    tool_map = {t.name: t for t in tools}
+    llm_with_tools = llm.bind_tools(tools)
+    msgs = list(messages)
+
+    for _ in range(8):
+        response = llm_with_tools.invoke(msgs)
+        msgs.append(response)
+
+        if not getattr(response, "tool_calls", None):
+            return str(response.content)
+
+        for tc in response.tool_calls:
+            name = tc["name"]
+            args = tc["args"]
+            call_id = tc["id"]
+            try:
+                result = tool_map[name].invoke(args) if name in tool_map else f"Unknown tool: {name}"
+            except Exception as exc:
+                result = f"Tool error ({name}): {exc}"
+            msgs.append(ToolMessage(content=str(result), tool_call_id=call_id))
+
+    # Fallback to last distinct message
+    for msg in reversed(msgs):
+        if isinstance(msg, AIMessage) and msg.content and not getattr(msg, "tool_calls", None):
+            return str(msg.content)
+            
+    return "I successfully processed your request."
 
 def dispatch_email_report(question: str, user_email: Optional[str] = None, portfolio_context: Optional[str] = None) -> str:
     """
@@ -67,12 +99,9 @@ def dispatch_email_report(question: str, user_email: Optional[str] = None, portf
         
     prompt += "Please fetch recent market data, analyze this portfolio, come up with suggestions, and then email them to the user."
     
-    agent = create_email_agent()
-    
     try:
-        result = agent.invoke({"messages": [HumanMessage(content=prompt)]})
-        # Return the final AIMessage content to the chat interface
-        return result["messages"][-1].content
+        content = run_email_agent(prompt)
+        return content
     except Exception as e:
         logger.error(f"Email agent failed: {e}")
         return f"I encountered an error while trying to process your email request: {str(e)}"

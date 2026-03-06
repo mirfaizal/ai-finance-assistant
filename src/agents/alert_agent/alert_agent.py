@@ -2,11 +2,11 @@ import logging
 from typing import Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
-from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 
-from ...tools.market_tools import get_market_indices, get_market_news
-from ...tools.stock_tools import get_stock_price, get_company_info
+from ...tools.market_tools import get_market_overview
+from ...tools.news_tools import get_market_news
+from ...tools.stock_tools import get_stock_quote, get_stock_financials
 from ...memory.notification_store import NotificationStore
 
 logger = logging.getLogger("alert_agent")
@@ -24,8 +24,8 @@ Your exact workflow:
 5. Keep the total output to 2-3 short sentences. Markdown is fully supported. This will appear as a small banner on their dashboard.
 """
 
-def create_alert_agent() -> Any:
-    """Create the Login Alert ReAct agent."""
+def run_alert_agent(prompt: str) -> str:
+    """Run the Login Alert logic manually without langgraph.prebuilt."""
     try:
         # We can use gpt-4.1-mini as it's faster for simple banner text
         llm = ChatOpenAI(model="gpt-4", temperature=0.5) 
@@ -34,13 +34,43 @@ def create_alert_agent() -> Any:
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
         
     tools = [
-        get_market_indices,
+        get_market_overview,
         get_market_news,
-        get_stock_price,
-        get_company_info
+        get_stock_quote,
+        get_stock_financials
     ]
     
-    return create_react_agent(llm, tools=tools, state_modifier=SYSTEM_PROMPT)
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=prompt)
+    ]
+    
+    tool_map = {t.name: t for t in tools}
+    llm_with_tools = llm.bind_tools(tools)
+    msgs = list(messages)
+
+    for _ in range(5):
+        response = llm_with_tools.invoke(msgs)
+        msgs.append(response)
+
+        if not getattr(response, "tool_calls", None):
+            return str(response.content)
+
+        for tc in response.tool_calls:
+            name = tc["name"]
+            args = tc["args"]
+            call_id = tc["id"]
+            try:
+                result = tool_map[name].invoke(args) if name in tool_map else f"Unknown tool: {name}"
+            except Exception as exc:
+                result = f"Tool error ({name}): {exc}"
+            msgs.append(ToolMessage(content=str(result), tool_call_id=call_id))
+
+    for msg in reversed(msgs):
+        if isinstance(msg, AIMessage) and msg.content and not getattr(msg, "tool_calls", None):
+            return str(msg.content)
+            
+    return "Consider checking out some broad market ETFs today."
 
 def generate_login_alert(user_email: str, portfolio_context: Optional[str] = None) -> None:
     """
@@ -60,11 +90,8 @@ def generate_login_alert(user_email: str, portfolio_context: Optional[str] = Non
         
     prompt += "Analyze the market and generate a concise banner notification for their dashboard with an actionable link."
     
-    agent = create_alert_agent()
-    
     try:
-        result = agent.invoke({"messages": [HumanMessage(content=prompt)]})
-        insight_markdown = result["messages"][-1].content
+        insight_markdown = run_alert_agent(prompt)
         
         # Determine a title
         title = "Daily Portfolio Insights" if portfolio_context else "Welcome to Finnie!"
