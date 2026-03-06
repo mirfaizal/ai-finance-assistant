@@ -40,23 +40,23 @@ export function PortfolioChart() {
                 avg_cost: h.avg_cost ?? 0,
             }),
         );
-        if (sqliteHoldings.length > 0) {
-            const local = getHoldings();
-            const sqliteTickers = new Set(sqliteHoldings.map((h) => h.ticker));
-            const localOnly = local.filter((h) => !sqliteTickers.has(h.ticker));
-            const merged = [...sqliteHoldings, ...localOnly];
-            saveHoldings(merged);
-            setHoldings(merged);
-            const segs: PieSegment[] = (data.holdings ?? []).map(
-                (h: { ticker: string; allocation_pct: number }, i: number) => ({
-                    name: h.ticker,
-                    value: h.allocation_pct,
-                    color: PIE_COLORS[i % PIE_COLORS.length],
-                }),
-            );
-            setSegments(segs);
-            setSummary(data.summary ?? null);
-        }
+        const local = getHoldings();
+        const sqliteTickers = new Set(sqliteHoldings.map((h) => h.ticker));
+        const localOnly = local.filter((h) => !sqliteTickers.has(h.ticker));
+        const merged = [...sqliteHoldings, ...localOnly];
+
+        saveHoldings(merged);
+        setHoldings(merged);
+
+        const segs: PieSegment[] = (data.holdings ?? []).map(
+            (h: { ticker: string; allocation_pct: number }, i: number) => ({
+                name: h.ticker,
+                value: h.allocation_pct,
+                color: PIE_COLORS[i % PIE_COLORS.length],
+            }),
+        );
+        setSegments(segs);
+        setSummary(data.summary ?? null);
     }, [sharedData]);
 
     // Re-read localStorage / re-sync whenever the trading agent saves

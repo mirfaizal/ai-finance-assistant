@@ -142,15 +142,13 @@ export function ChatInterface({ sessionId, prefillMessage, onPrefillConsumed }: 
             if (res.agent === 'trading_agent') {
                 try {
                     const ph = await getPortfolioHoldings(res.session_id);
-                    if (ph.holdings.length > 0) {
-                        saveHoldings(
-                            ph.holdings.map((h) => ({
-                                ticker: h.ticker,
-                                shares: h.shares,
-                                avg_cost: h.avg_cost,
-                            })),
-                        );
-                    }
+                    saveHoldings(
+                        ph.holdings.map((h) => ({
+                            ticker: h.ticker,
+                            shares: h.shares,
+                            avg_cost: h.avg_cost,
+                        })),
+                    );
                 } catch {
                     // Non-fatal: chart will just not update this turn
                 }

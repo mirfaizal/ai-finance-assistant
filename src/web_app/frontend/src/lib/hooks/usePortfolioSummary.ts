@@ -58,7 +58,14 @@ export function usePortfolioSummary() {
 
   const refresh = useCallback(async (force = false) => {
     const sessionId = resolveBackendSid();
-    if (!sessionId) { setData(null); setLoaded(true); return; }
+    const headers = await getAuthHeaders();
+    
+    // If the user is neither logged in via Auth0 nor has an anonymous chat session, block.
+    if (!sessionId && !headers['X-User-Email']) { 
+      setData(null); 
+      setLoaded(true); 
+      return; 
+    }
 
     // Respect TTL unless forced (e.g. after a trade)
     if (!force && cached && (Date.now() - lastFetchedAt) < TTL) {
@@ -68,8 +75,10 @@ export function usePortfolioSummary() {
     }
 
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${BASE_URL}/portfolio/summary/${sessionId}`, { headers });
+      // The backend prioritizes X-User-Email over the session_id path parameter.
+      // If we don't have a local session_id but we have an email, pass 'default' to satisfy the URL path.
+      const targetSession = sessionId || 'default';
+      const res = await fetch(`${BASE_URL}/portfolio/summary/${targetSession}`, { headers });
       if (!res.ok) { setData(null); setLoaded(true); return; }
       const json: RawApi = await res.json();
       cached = json;
