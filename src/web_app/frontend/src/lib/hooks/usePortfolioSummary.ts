@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BASE_URL } from '../config';
 import { getAuthHeaders } from '../api';
+import { useAuth0 } from '@auth0/auth0-react';
 
 type RawApi = {
   holdings?: { ticker: string; allocation_pct: number; current_value?: number; shares?: number; avg_cost?: number }[];
@@ -53,12 +54,20 @@ function resolveBackendSid(): string | null {
 
 
 export function usePortfolioSummary() {
+  const { user } = useAuth0();
+  const userEmail = user?.email;
+  
   const [data, setData] = useState<RawApi>(cached);
   const [loaded, setLoaded] = useState<boolean>(cached !== null);
 
   const refresh = useCallback(async (force = false) => {
     const sessionId = resolveBackendSid();
     const headers = await getAuthHeaders();
+    
+    // Fallback: If App.tsx hasn't populated api.ts yet, manually inject from useAuth0
+    if (userEmail && !headers['X-User-Email']) {
+      headers['X-User-Email'] = userEmail;
+    }
     
     // If the user is neither logged in via Auth0 nor has an anonymous chat session, block.
     if (!sessionId && !headers['X-User-Email']) { 
@@ -88,10 +97,11 @@ export function usePortfolioSummary() {
     } catch {
       setLoaded(true);
     }
-  }, []);
+  }, [userEmail]);
 
   useEffect(() => {
-    refresh();
+    // Force a fetch immediately when userEmail resolves from undefined to a string
+    refresh(!!userEmail);
 
     // After a trade, bust cache and force an immediate re-fetch
     const onUpdate = () => {
@@ -101,7 +111,7 @@ export function usePortfolioSummary() {
     };
     window.addEventListener('portfolioUpdated', onUpdate);
     return () => window.removeEventListener('portfolioUpdated', onUpdate);
-  }, [refresh]);
+  }, [refresh, userEmail]);
 
   return { data, loaded, refresh } as const;
 }
