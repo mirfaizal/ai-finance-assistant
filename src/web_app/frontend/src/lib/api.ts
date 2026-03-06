@@ -12,7 +12,7 @@ export function setUserEmail(email: string | undefined) {
   _userEmail = email;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
   if (_getAccessToken) {
     try {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { BASE_URL } from '../config';
+import { getAuthHeaders } from '../api';
 
 type RawApi = {
   holdings?: { ticker: string; allocation_pct: number; current_value?: number; shares?: number; avg_cost?: number }[];
@@ -67,7 +68,8 @@ export function usePortfolioSummary() {
     }
 
     try {
-      const res = await fetch(`${BASE_URL}/portfolio/summary/${sessionId}`);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${BASE_URL}/portfolio/summary/${sessionId}`, { headers });
       if (!res.ok) { setData(null); setLoaded(true); return; }
       const json: RawApi = await res.json();
       cached = json;
