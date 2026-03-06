@@ -247,13 +247,22 @@ export function Dashboard({ onStartChat, onNavigate }: DashboardProps) {
                                     href="#"
                                     onClick={(e) => {
                                       e.preventDefault();
+                                      dismissNotification(notif.id);
                                       if (q) onStartChat(q);
                                     }}
                                     style={{ color: '#38bdf8', textDecoration: 'underline' }}
                                   />
                                 );
                               }
-                              return <a {...props} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8' }} />;
+                              return (
+                                <a
+                                  {...props}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => dismissNotification(notif.id)}
+                                  style={{ color: '#38bdf8' }}
+                                />
+                              );
                             }
                           }}
                         >
