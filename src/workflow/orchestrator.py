@@ -8,6 +8,7 @@ Provides workflow management with routing, execution, and state management.
 from typing import Dict, List, Optional, Any, Callable
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.runnables import Runnable
 import logging
 from datetime import datetime
 
@@ -74,12 +75,12 @@ class AgentOrchestrator:
             logger.setLevel(logging.INFO)
         return logger
     
-    def _build_workflow(self) -> StateGraph:
+    def _build_workflow(self) -> Runnable:
         """
         Build the LangGraph StateGraph for agent orchestration.
         
         Returns:
-            Compiled StateGraph
+            Compiled StateGraph (as Runnable)
         """
         # Create the state graph
         workflow = StateGraph(WorkflowState)
@@ -365,7 +366,11 @@ class AgentOrchestrator:
             original_query=query,
             session_id=session_id or f"session_{datetime.now().timestamp()}",
             context=context or {},
-            max_iterations=max_iterations
+            max_iterations=max_iterations,
+            memory_summary=None,
+            current_agent=None,
+            next_agent=None,
+            final_result=None,
         )
         
         # Run the workflow (thread_id enables MemorySaver to replay session state)
