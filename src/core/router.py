@@ -249,6 +249,11 @@ AGENT_DESCRIPTIONS: Dict[str, str] = {
         "General financial education: compound interest, bonds, dividends, ETFs, liquidity, "
         "inflation, credit, loans, asset classes, investing basics."
     ),
+    "email_agent": (
+        "Email delivery agent. When the user explicitly requests an analysis, summary, or report "
+        "to be E-MAILED or SENT to their inbox. E.g. 'Email me a portfolio analysis' or 'Send me "
+        "a daily stock suggestion email'."
+    ),
 }
 
 _LLM_ROUTING_SYSTEM = (
@@ -468,6 +473,17 @@ ROUTING_TABLE: Dict[str, List[str]] = {
         "tax filing",
         "taxable income",
     ],
+    # Email agent — handles explicitly requested emails
+    "email_agent": [
+        "email me",
+        "send me an email",
+        "send an email",
+        "email my",
+        "email a",
+        "send email",
+        "portfolio email",
+        "daily email",
+    ],
     # General finance Q&A — broadest, checked last
     # Also handles real-time / current-affairs questions via Tavily search
     "finance_qa_agent": [
@@ -516,6 +532,10 @@ _FORCE_ROUTE: List[tuple] = [
         "what do i own", "what i own",
         "my paper portfolio", "show my portfolio", "view my portfolio",
         "paper p&l", "my p&l",
+    ]),
+    ("email_agent", [
+        "email me", "send me an email", "email my portfolio",
+        "send email", "email a report", "send an email"
     ]),
 ]
 

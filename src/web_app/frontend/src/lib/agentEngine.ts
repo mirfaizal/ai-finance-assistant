@@ -65,6 +65,14 @@ export const AGENTS: Record<AgentType, Agent> = {
     accent: 'cyan',
     description: 'Paper buy/sell trades and position tracking stored in SQLite',
   },
+  emailer: {
+    type: 'emailer',
+    name: 'Finnie Emailer',
+    title: 'Email Delivery Agent',
+    color: '#fb7185', // Rose
+    accent: 'rose',
+    description: 'Compiles reports and emails them directly to your inbox',
+  },
 };
 
 // ── Keyword maps (order determines priority) ──────────────────────────────────
@@ -154,6 +162,7 @@ export function backendAgentToType(backendName: string): AgentType {
     news_synthesizer_agent:   'news',
     stock_agent:              'stock',
     trading_agent:            'trader',
+    email_agent:              'emailer',
   };
   return map[backendName] ?? 'advisor';
 }

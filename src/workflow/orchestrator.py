@@ -474,6 +474,7 @@ def process_query(
     from ..agents.news_synthesizer_agent.news_agent import synthesize_news
     from ..agents.stock_agent.stock_agent import ask_stock_agent
     from ..agents.trading_agent.trading_agent import ask_trading_agent
+    from ..agents.email_agent.email_agent import dispatch_email_report
     from ..memory.conversation_store import ConversationStore
     from ..memory.portfolio_store import PortfolioStore
     from ..agents.memory_synthesizer_agent.memory_agent import synthesize_memory
@@ -534,11 +535,21 @@ def process_query(
             enriched = question_text
         return analyze_portfolio({"assets": [], "question": _ctx(enriched)})
 
+    def _email_with_holdings(question_text: str) -> str:
+        """Fetch live SQLite holdings and pass them explicitly to the email agent."""
+        holdings = portfolio_store.get_holdings(portfolio_id)
+        holdings_str = None
+        if holdings:
+            import json as _json
+            holdings_str = _json.dumps(holdings)
+        return dispatch_email_report(question_text, user_email, holdings_str)
+
     dispatch = {
         "trading_agent":            lambda: ask_trading_agent(question, session_id=portfolio_id, **common),
         "stock_agent":              lambda: ask_stock_agent(question, **common),
         "finance_qa_agent":         lambda: ask_finance_agent(_ctx(question)),
         "portfolio_analysis_agent": lambda: _portfolio_with_holdings(question),
+        "email_agent":              lambda: _email_with_holdings(question),
         "market_analysis_agent":    lambda: analyze_market({"question": _ctx(question)}),
         "goal_planning_agent":      lambda: plan_goals({"question": _ctx(question)}),
         "news_synthesizer_agent":   lambda: synthesize_news([question]),
