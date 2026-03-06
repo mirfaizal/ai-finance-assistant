@@ -4,7 +4,7 @@
 
 ## The 30-Second Elevator Pitch
 
-> "I built a **production-ready, multi-agent AI system** that shows how agentic AI can transform the way Fidelity serves its 46 million customers. It's not a slide deck about AI — it's a **working system** with 11 specialized agents, live market data, persistent memory, and full observability. This is what the future of financial services looks like, and Fidelity is already investing heavily in this direction."
+> "I built a **production-ready, multi-agent AI system** that shows how agentic AI can transform the way Fidelity serves its 46 million customers. It's a **working system** with 11 specialized agents, live market data, persistent memory, and full observability. This is what the future of financial services looks like, and Fidelity is already investing heavily in this direction."
 
 ---
 
